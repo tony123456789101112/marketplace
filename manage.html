@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manage Job Listings</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 30px 20px;
+            color: #333;
+        }
+
+        main {
+            max-width: 700px;
+            margin: auto;
+            padding: 25px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .listing-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 15px 0;
+            border-top: 1px solid #ddd;
+        }
+
+        .listing-details {
+            overflow-wrap: anywhere;
+        }
+
+        button {
+            flex-shrink: 0;
+            padding: 9px 13px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #b02a37;
+        }
+
+        #status {
+            min-height: 1.5em;
+        }
+
+        @media (max-width: 480px) {
+            .listing-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Manage Job Listings</h1>
+    <p>Listings saved by this browser appear below.</p>
+    <p id="status" aria-live="polite"></p>
+    <div id="listings"></div>
+</main>
+
+<script>
+    const STORAGE_KEY = "employerJobListings";
+    const listingsContainer = document.getElementById("listings");
+    const status = document.getElementById("status");
+
+    function readListings() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+
+        if (!saved) return [];
+
+        const listings = JSON.parse(saved);
+
+        if (!Array.isArray(listings)) {
+            throw new Error("Saved job listings are not in the expected format.");
+        }
+
+        return listings;
+    }
+
+    function loadListings() {
+        listingsContainer.replaceChildren();
+
+        try {
+            const listings = readListings();
+
+            if (listings.length === 0) {
+                listingsContainer.textContent = "No saved job listings found.";
+                return;
+            }
+
+            listings.forEach((listing, index) => {
+                const row = document.createElement("div");
+                row.className = "listing-row";
+
+                const details = document.createElement("div");
+                details.className = "listing-details";
+
+                const title = document.createElement("strong");
+                title.textContent = listing.job || "Untitled job";
+
+                const location = document.createElement("div");
+                location.textContent =
+                    `${listing.address || ""}, ${listing.region || ""}, ${listing.country || ""}`;
+
+                details.append(title, location);
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.textContent = "Delete listing";
+
+                deleteButton.addEventListener("click", () => {
+                    try {
+                        // Reload the latest data in case it changed since rendering.
+                        const currentListings = readListings();
+
+                        // Delete this exact listing by its current position.
+                        currentListings.splice(index, 1);
+
+                        localStorage.setItem(
+                            STORAGE_KEY,
+                            JSON.stringify(currentListings)
+                        );
+
+                        status.textContent = "Job listing deleted.";
+                        loadListings();
+                    } catch (error) {
+                        status.textContent =
+                            "Could not delete listing: " + error.message;
+                    }
+                });
+
+                row.append(details, deleteButton);
+                listingsContainer.appendChild(row);
+            });
+        } catch (error) {
+            status.textContent =
+                "Could not read saved listings: " + error.message;
+        }
+    }
+
+    loadListings();
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advertise Your Product</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    #map {
+      height: 65vh;
+      min-height: 400px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .hint {
+      color: #555;
+    }
+
+    .pin-form label {
+      display: block;
+      margin: 10px 0 4px;
+    }
+
+    .pin-form input,
+    .pin-form textarea {
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .pin-form textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .pin-form button {
+      margin-top: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .pin-photo {
+      display: block;
+      max-width: 220px;
+      max-height: 150px;
+      margin-top: 8px;
+      object-fit: cover;
+    }
+
+    .pin-info {
+      max-width: 240px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Advertise Your Product</h1>
+  <p class="hint">
+    Click a pin to view its information. Click an empty place on the map to add a pin.
+    Pins expire one month after they are created.
+  </p>
+  <a href="marketplace.html">Back to Marketplace</a>
+
+  <div id="map" aria-label="World map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const STORAGE_KEY = "productMapPins";
+    const PIN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    const map = L.map("map").setView([20, 0], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    function getPins() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved) ? saved : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function savePins(pins) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
+    }
+
+    // Keep pins that are less than 30 days old.
+    function removeExpiredPins() {
+      const now = Date.now();
+      const activePins = getPins().filter(pin =>
+        Number.isFinite(pin.createdAt) &&
+        now - pin.createdAt < PIN_LIFETIME_MS
+      );
+
+      savePins(activePins);
+      return activePins;
+    }
+
+    function showPin(pin) {
+      const marker = L.marker([pin.lat, pin.lng]).addTo(map);
+      const content = document.createElement("div");
+      content.className = "pin-info";
+
+      const title = document.createElement("strong");
+      title.textContent = pin.title || "Product";
+      content.appendChild(title);
+
+      if (pin.text) {
+        const description = document.createElement("p");
+        description.textContent = pin.text;
+        content.appendChild(description);
+      }
+
+      if (pin.photo) {
+        const image = document.createElement("img");
+        image.src = pin.photo;
+        image.alt = pin.title ? `Photo of ${pin.title}` : "Product photo";
+        image.className = "pin-photo";
+        content.appendChild(image);
+      }
+
+      marker.bindPopup(content);
+    }
+
+    // Remove expired pins before displaying the remaining ones.
+    removeExpiredPins().forEach(showPin);
+
+    map.on("click", (event) => {
+      const form = document.createElement("form");
+      form.className = "pin-form";
+
+      form.innerHTML = `
+        <label for="pin-title">Product or business name</label>
+        <input id="pin-title" name="title" maxlength="80" required>
+
+        <label for="pin-text">Information</label>
+        <textarea id="pin-text" name="text" maxlength="500"></textarea>
+
+        <label for="pin-photo">Photo (optional)</label>
+        <input id="pin-photo" name="photo" type="file" accept="image/*">
+
+        <button type="submit">Save pin</button>
+      `;
+
+      const popup = L.popup()
+        .setLatLng(event.latlng)
+        .setContent(form)
+        .openOn(map);
+
+      form.addEventListener("submit", (submitEvent) => {
+        submitEvent.preventDefault();
+
+        const title = form.elements.title.value.trim();
+        const text = form.elements.text.value.trim();
+        const file = form.elements.photo.files[0];
+
+        function savePin(photoData = "") {
+          const pin = {
+            lat: event.latlng.lat,
+            lng: event.latlng.lng,
+            title,
+            text,
+            photo: photoData,
+            createdAt: Date.now()
+          };
+
+          const pins = removeExpiredPins();
+          pins.push(pin);
+
+          try {
+            savePins(pins);
+            map.closePopup(popup);
+            showPin(pin);
+          } catch {
+            alert("Could not save the pin. Try using a smaller photo.");
+          }
+        }
+
+        if (!file) {
+          savePin();
+          return;
+        }
+
+        if (file.size > 1_000_000) {
+          alert("Please choose a photo smaller than 1 MB.");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => savePin(reader.result);
+        reader.onerror = () => alert("Could not read that photo.");
+        reader.readAsDataURL(file);
+      });
+    });
+  </script>
+</body>
+</html>

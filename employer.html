@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employer Workspace - Postgraduate Careers</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+            color: #333;
+        }
+
+        form, .job-group, .country-group, .region-group, .listing {
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        label {
+            display: block;
+            margin-top: 14px;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        button {
+            margin-top: 18px;
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+
+        .message {
+            color: #216e39;
+            min-height: 1.4em;
+        }
+
+        .job-group {
+            background: #f7f9fc;
+        }
+
+        .country-group {
+            margin-left: 12px;
+            background: #fff;
+        }
+
+        .region-group {
+            margin-left: 12px;
+            background: #fafafa;
+        }
+
+        .listing {
+            margin-left: 12px;
+        }
+
+        .job-group > h3 {
+            margin-top: 0;
+        }
+
+        .listing p {
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .empty {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Employer Workspace</h1>
+    <h2>Add a job listing which stored for a month</h2>
+
+    <form id="job-form">
+        <label for="job">Select a job</label>
+        <select id="job" required>
+            <option value="">Loading jobs…</option>
+        </select>
+
+        <label for="country">Country</label>
+        <select id="country" required>
+            <option value="">Choose a country</option>
+        </select>
+
+        <label for="region">Region / State / Province</label>
+        <select id="region" required disabled>
+            <option value="">Choose a country first</option>
+        </select>
+
+        <label for="address">Address</label>
+        <input id="address" type="text" required
+               placeholder="Enter the workplace address">
+
+        <label for="telephone">Contact telephone number</label>
+        <input id="telephone" type="tel" required
+               autocomplete="tel"
+               placeholder="For example: +1 555 123 4567">
+
+        <label for="income">Income / Salary</label>
+        <input id="income" type="text" required
+               placeholder="For example: $60,000–$75,000 per year">
+
+        <label for="work-hours">Work hours / schedule</label>
+        <input id="work-hours" type="text" required
+               placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM">
+
+        <label for="description">Job description and other details</label>
+        <textarea id="description" required
+                  placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."></textarea>
+
+        <button type="submit">Save job listing</button>
+        <p id="message" class="message" role="status"></p>
+    </form>
+
+    <h2>Saved Listings — Alphabetical Groups</h2>
+    <div id="listings"></div>
+
+    <script>
+        const STORAGE_KEY = "employerJobListings";
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+        // Format: Full job title (qualification wording).
+        // Add or remove entries here to change the job dropdown.
+        const JOBS = [
+            "Abuse Counselor (Clinical) (Clinical Counseling / Psychology Master's)",
+            "Academic Advisor (Higher Education / Counseling Master's)",
+            "Accountant (Accounting / Finance Bachelor's)",
+            "Acquisition Specialist (Business Administration / Finance Bachelor's)",
+            "Actuary (Actuarial Science / Mathematics Bachelor's)",
+            "Acupuncturist (Acupuncture / Traditional Medicine Graduate Degree)",
+            "Addiction Medicine Specialist (Medical Doctorate + Addiction Medicine Fellowship)",
+            "Administrative Law Judge (Juris Doctor Law Degree + Licensure)",
+            "Admissions Director (Higher Education Administration Master's)",
+            "Aeronautical Engineer (Aeronautical / Aerospace Engineering Bachelor's)",
+            "Aerospace Engineer (Aerospace Engineering Bachelor's)",
+            "Agricultural Engineer (Agricultural Engineering Bachelor's)",
+            "Agronomist / Soil Scientist (Agronomy / Plant Sciences Bachelor's)",
+            "AI Research Scientist (Computer Science / Artificial Intelligence Ph.D.)",
+            "Aircraft Mechanic (Airframe and Powerplant - A&P License)",
+            "Air Traffic Controller (FAA Academy Training / Specialized Systems Certificate)",
+            "Allergist (Medical Doctorate + Immunology Residency)",
+            "Allied Health Director (Healthcare Administration Master's)",
+            "Alternative Energy Manager (Renewable Energy / Electrical Engineering Bachelor's)",
+            "Analytic Methodologist (Applied Mathematics / Statistics Ph.D.)",
+            "Analytical Chemist (Chemistry / Analytical Chemistry Master's or Ph.D.)",
+            "Anatomist (Anatomy / Cell Biology Ph.D.)",
+            "Anesthesia Assistant (Master of Science in Anesthesia)",
+            "Anesthesiologist (Medical Doctorate + Anesthesiology Residency)",
+            "Angiography Technologist (Radiologic Technology Bachelor's + Specialty Certification)",
+            "Animal Scientist (Animal Science / Dairy Science Master's or Ph.D.)",
+            "Antenna Engineer (Electrical / Telecommunications Engineering Bachelor's)",
+            "Anthropologist (Anthropology Master's / Ph.D.)",
+            "Appliance Repairer (Vocational Certificate + Appliance Industry Certification)",
+            "Application Architect (Computer Science / Software Architecture Bachelor's)",
+            "Applications Developer (Software Engineering / Computer Science Bachelor's)",
+            "Applied Mathematician (Applied Mathematics Ph.D.)",
+            "Aquaculture Veterinarian (Doctor of Veterinary Medicine + Aquatic Animal Specialization)",
+            "Aquatic Ecologist (Aquatic Biology / Limnology Master's or Ph.D.)",
+            "Arborist Consultant (Urban Forestry / Horticulture Bachelor's)",
+            "Archaeological Conservator (Museum Conservation / Archaeology Master's)",
+            "Archeologist (Archeology / History Master's)",
+            "Architect (Bachelor or Master of Architecture + Licensure)",
+            "Architectural Historian (Architectural History / Historic Preservation Master's)",
+            "Archivist (Library Science / History Master's)",
+            "Art Conservator (Fine Arts Conservation / Chemistry Master's)",
+            "Art Director (Fine Arts / Graphic Design Bachelor's)",
+            "Art Therapist (Art Therapy / Clinical Counseling Master's)",
+            "Artificial Intelligence Engineer (Computer Science / Machine Learning Master's)",
+            "Arts Administrator / Dance Company Manager (Dance / Arts Management BA/BFA)",
+            "Assay Development Scientist (Biochemistry / Biotechnology Ph.D.)",
+            "Asset Liability Manager (Quantitative Finance / Economics Master's)",
+            "Asset Manager (Finance / Real Estate Bachelor's)",
+            "Astrobiologist (Astrophysics / Microbiology Ph.D.)",
+            "Astronomer (Astrophysics / Physics Ph.D.)",
+            "Atmospheric Scientist (Meteorology / Atmospheric Science Bachelor's)",
+            "Audio and Video Technician (Technical Hands-on Certification)",
+            "Audio Engineer (Research) (Acoustical Engineering / Electrical Engineering Master's)",
+            "Auditor (Accounting / Business Analytics Bachelor's)",
+            "Audiologist (Doctor of Audiology - Au.D.)",
+            "Automation Engineer (Robotics / Mechanical Engineering Bachelor's)",
+            "Automotive Body Repairer (ASE Certification / Apprenticeship)",
+            "Automotive Mechanic (Automotive Service Excellence - ASE Certification)",
+            "Automotive Systems Engineer (Automotive / Mechanical Engineering Bachelor's)",
+            "Avionics Systems Software Engineer (Aerospace Engineering / Computer Science Bachelor's)",
+            "Avionics Technician (NCATT Certification / Aircraft Electronics Trade Path)",
+            "Bacteriologist (Microbiology Ph.D.)",
+            "Ballistics Expert (Forensic) (Forensic Science / Chemistry Bachelor's)",
+            "Bank Examiner (Finance / Accounting Bachelor's)",
+            "Barber (State Barber Styling License / Apprenticeship)",
+            "Bartender (Mixology Academy / Hospitality Training)",
+            "Behavior Analyst (BCBA) (Applied Behavior Analysis / Psychology Master's)",
+            "Behavioral Economist (Economics / Behavioral Science Ph.D.)",
+            "Behavioral Health Director (Social Work / Psychology Graduate Degree)",
+            "Bibliographer (Library Science / Information Studies Master's)",
+            "Biochemical Engineer (Chemical Engineering / Biotechnology Bachelor's)",
+            "Biochemist (Biochemistry / Molecular Biology Ph.D.)",
+            "Biocompatibility Specialist (Biomedical Engineering / Toxicology Master's)",
+            "Bioengineer (Biomedical Engineering Bachelor's)",
+            "Bioethicist (Bioethics / Philosophy / Medical Humanities Graduate Degree)",
+            "Biogeochemist (Geochemistry / Environmental Science Ph.D.)",
+            "Bioinformatics Scientist (Computational Biology Master's / Ph.D.)",
+            "Biological Scientist (Biology / Genetics Ph.D.)",
+            "Biomedical Engineer (Biomedical Engineering Bachelor's)",
+            "Biomedical Equipment Designer (Bioengineering / Electrical Engineering Bachelor's)",
+            "Biomedical Scientists (Bachelor of Biomedical science)",
+            "Biophysics Scientist (Biophysics / Molecular Biophysics Ph.D.)",
+            "Bioprocess Engineer (Chemical / Biological Systems Engineering Bachelor's)",
+            "Bionicist (Robotics Engineering / Biomedical Engineering Master's)",
+            "Biostatistician (Statistics / Biostatistics Master's)",
+            "Blockchain Engineer (Computer Science / Cryptography Bachelor's)",
+            "Boilermaker (4-Year Formal Trade Apprenticeship)",
+            "Bookkeeper (Certified Bookkeeper - CB designation / On-the-Job Training)",
+            "Brand Strategist (Marketing Analytics / Business Bachelor's)",
+            "Brickmason (Masonry Apprenticeship)",
+            "Bridge Structural Engineer (Civil / Structural Engineering Master's)",
+            "Budget Analyst (Finance / Public Administration Bachelor's)",
+            "Building Systems Engineer (Architectural Engineering / HVAC Systems Bachelor's)",
+            "Bus Driver (Commercial Driver's License - CDL Class B + Passenger Endorsement)",
+            "Business Continuity Planner (Risk Management / Operations Bachelor's)",
+            "Business Intelligence Analyst (Data Analytics / Management Information Systems Bachelor's)",
+            "Business Valuation Analyst (Finance / Business Analytics Bachelor's)",
+            "CAD/CAM Engineer (Mechanical Engineering Technology Bachelor's)",
+            "Cabinetmaker (Carpentry Apprenticeship / Advanced Millwork Training)",
+            "Calligrapher (Academic/Institutional) (Fine Arts Bachelor's)",
+            "Camera Operator (Portfolio / Production Crew Training)",
+            "Cardiovascular Perfusionist (Cardiovascular Perfusion Master's / Graduate Certificate)",
+            "Cardiovascular Technologist (Cardiovascular Technology / Health Science Bachelor's)",
+            "Career Technical Educator (Vocational Education Bachelor's + State Certification)",
+            "Carpenter (Union/Non-Union Structural Carpentry Apprenticeship)",
+            "Cartographer (Geographic Information Systems - GIS / Geography Bachelor's)",
+            "Cartographic Draftsman (Geographic Information Systems / Geomatics Bachelor's)",
+            "Catalysis Scientist (Chemical Engineering / Inorganic Chemistry Ph.D.)",
+            "Cell Biologist (Cell and Molecular Biology Ph.D.)",
+            "Ceramic Engineer (Materials Science and Engineering Bachelor's)",
+            "Certified Child Life Specialist (Child Development / Human Development Bachelor's)",
+            "Chauffeur (Commercial Driving License / Executive Transport Certification)",
+            "Chef / Head Cook (Culinary Experience / Apprenticeship Track)",
+            "Chemical Engineer (Chemical Engineering Bachelor's)",
+            "Chemical Plant Operator (Process Technology Certificate / Industrial Safety Training)",
+            "Chemical Process Engineer (Chemical Engineering Bachelor's)",
+            "Chemist (Chemistry / Materials Science Bachelor's)",
+            "Chief Data Officer (CDO) (Data Science / Information Technology Graduate Degree)",
+            "Chief Executive Officer (CEO) (Business Administration / Executive Leadership Degree)",
+            "Chief Financial Officer (CFO) (Finance / Accounting MBA or Master's)",
+            "Chief Information Officer (CIO) (Information Systems / Business Administration Master's)",
+            "Chief Information Security Officer (CISO) (Cybersecurity / Information Assurance Graduate Degree)",
+            "Chief Medical Officer (CMO) (Medical Doctorate + Health Administration Master's)",
+            "Chief Sustainability Officer (Environmental Science / Corporate Governance Graduate Degree)",
+            "Chief Technology Officer (CTO) (Computer Science / Engineering Graduate Degree)",
+            "Child Psychologist (Child / Developmental Psychology Ph.D. or Psy.D.)",
+            "Child, Family, and School Social Worker (Social Work Bachelor's / MSW)",
+            "Chiropractor (Doctor of Chiropractic - D.C.)",
+            "City Engineer (Civil Engineering Bachelor's + Professional Engineer License)",
+            "Civil Engineer (Civil Engineering Bachelor's)",
+            "Claims Adjuster (State Insurance Adjuster Licensure)",
+            "Climate Change Policy Analyst (Public Policy / Environmental Science Master's)",
+            "Climatologist (Climatology / Atmospheric Science Master's or Ph.D.)",
+            "Clinical Audiologist (Doctor of Audiology - Au.D.)",
+            "Clinical Biochemist (Clinical Biochemistry Ph.D. / Clinical Fellowship)",
+            "Clinical Data Manager (Health Informatics / Statistics Bachelor's)",
+            "Clinical Dietitian (Dietetics / Nutrition Science Bachelor's + RD Credential)",
+            "Clinical Embryologist (Clinical Embryology / Reproductive Biology Master's)",
+            "Clinical Geneticist (Medical Doctorate + Clinical Genetics Residency)",
+            "Clinical Informatics Manager (Health Informatics / Nursing Informatics Graduate Degree)",
+            "Clinical Neuropsychologist (Neuropsychology Ph.D. / Psy.D.)",
+            "Clinical Nurse Specialist (Master of Science in Nursing - MSN)",
+            "Clinical Pharmacist (Doctor of Pharmacy - Pharm.D.)",
+            "Clinical Psychologist (Clinical Psychology Ph.D. / Psy.D.)",
+            "Clinical Research Associate (Life Sciences / Nursing Bachelor's)",
+            "Clinical Research Coordinator (Health Administration / Life Sciences Bachelor's)",
+            "Clinical Research Scientist (Biomedical Sciences / Clinical Investigation Ph.D.)",
+            "CNC Machinist (Computer Numerical Control Certification / Precision Machining NIMS)",
+            "Coastal Engineer (Ocean / Civil Engineering Master's)",
+            "Cognitive Neuroscientist (Cognitive Neuroscience / Psychology Ph.D.)",
+            "Commercial Airline Pilot (FAA Commercial Pilot License + Instrument Rating + Flight Hours)",
+            "Commercial Dancer (Dance BFA / Performing Arts BA)",
+            "Commercial Diver (Commercial Diving Certification / Underwater Welding License)",
+            "Commercial Fisherman (Maritime Licensing / On-Deck OJT)",
+            "Commercial Photographer (Portfolio / Practical Studio Training)",
+            "Commercial Real Estate Analyst (Finance / Real Estate Bachelor's)",
+            "Community Planner (Urban and Regional Planning Master's)",
+            "Compensation Analyst (Human Resources / Finance Bachelor's)",
+            "Compensation and Benefits Manager (Human Resources / Business Bachelor's)",
+            "Compliance Officer (Legal Studies / Risk Management Bachelor's)",
+            "Computational Chemist (Theoretical Chemistry / Computational Modeling Ph.D.)",
+            "Computational Fluid Dynamics Engineer (Mechanical / Aerospace Engineering Ph.D.)",
+            "Computational Linguist (Computational Linguistics / Computer Science Master's)",
+            "Concierge (Hospitality Industry OJT)",
+            "Computer and Information Systems Manager (Information Technology / Management Information Systems Graduate Degree)",
+            "Computer Network Architect (Computer Engineering / Information Technology Bachelor's)",
+            "Computer Programmer (Computer Science / Software Engineering Bachelor's)",
+            "Computer Support Specialist (CompTIA A+ / Network+ / IT Technical Certifications)",
+            "Computer Systems Engineer (Computer Engineering / Systems Science Bachelor's)",
+            "Conservation Scientist (Environmental Science / Forestry Bachelor's)",
+            "Construction Manager (Construction Science / Civil Engineering Bachelor's)",
+            "Consumer Insights Director (Marketing Research / Applied Statistics Master's)",
+            "Contracting Specialist? (Not provided)",
+            "Corporate Attorney / Lawyer (Juris Doctor Law Degree + State Bar Licensure)",
+            "Corporate Compliance Director (Juris Doctor Law Degree or Business Ethics Master's)",
+            "Corporate Strategist (Business Administration / Economics MBA)",
+            "Corrosion Engineer (Materials Science / Chemical Engineering Bachelor's)",
+            "Cost Estimator (Construction Engineering / Finance Bachelor's)",
+            "Court Reporter (Stenography Licensure / NCRA Certification)",
+            "Crane Operator (NCCCO Crane Operation Certification)",
+            "Credit Analyst (Finance / Economics Bachelor's)",
+            "Credit Counselor (Finance / Human Services Bachelor's)",
+            "Crime Analyst (Criminology / Criminal Justice / Data Analytics Bachelor's)",
+            "Criminalist (Forensic Science / Chemistry Bachelor's)",
+            "Correctional Officer (Law Enforcement Academy Training)",
+            "Cryogenic Engineer (Mechanical Engineering / Physics Master's)",
+            "Cryptanalyst (Mathematics / Cryptography Ph.D.)",
+            "Cryptographer (Computer Science / Mathematics Ph.D.)",
+            "Curator (Museum Studies / Art History Master's)",
+            "Curriculum Developer (Curriculum and Instruction Master's)",
+            "Customer Experience Analytics Manager (Data Analytics / Marketing Bachelor's)",
+            "Customs Inspector (Federal Law Enforcement Training Center - FLETC Academy)",
+            "Cybersecurity Analyst / Penetration Tester (Cybersecurity / Computer Network Security Bachelor's)",
+            "Cybersecurity Architect (Cybersecurity / Computer Science Bachelor's)",
+            "Cytogenetic Technologist (Medical Laboratory Science / Genetics Bachelor's)",
+            "Cytotechnologist (Cytotechnology / Medical Laboratory Science Bachelor's)",
+            "Dance Choreographer (Dance BFA / Production MFA)",
+            "Dance Critic / Journalist (English / Dance / Journalism BA)",
+            "Dance Movement Therapist (Dance Therapy / Clinical Mental Health Counseling Master's)",
+            "Dance Studio Owner / Director (Dance / Business Administration Bachelor's)",
+            "Dance Teacher / Instructor (Dance Education BFA / Kinesiology BA)",
+            "Data Architect (Data Management / Computer Science Bachelor's)",
+            "Data Governance Manager (Information Management / Computer Science Bachelor's)",
+            "Data Privacy Officer (Legal Studies / Cybersecurity Master's)",
+            "Data Scientist (Data Science / Applied Mathematics Bachelor's or Master's)",
+            "Data Warehousing Specialist (Information Technology / Computer Science Bachelor's)",
+            "Database Administrator (Computer Science / Data Management Bachelor's)",
+            "Database Architect (Software Engineering / Computer Science Bachelor's)",
+            "Database Engineer (Computer Science / Information Technology Bachelor's)",
+            "Decommissioning Engineer (Nuclear / Civil Engineering Bachelor's)",
+            "Demographer (Demography / Sociology Graduate Degree)",
+            "Dental Assistant (State Dental Assisting Board Registration / Certificate)",
+            "Dental Hygienist (Associate of Applied Science in Dental Hygiene + Licensure)",
+            "Dental Surgeon (Doctor of Dental Surgery - DDS / Doctor of Medicine in Dentistry)",
+            "Dentist (Doctor of Dental Surgery - DDS / Doctor of Medicine in Dentistry - DMD)",
+            "Desktop Publisher (Digital Layout / Graphic Production Certificate)",
+            "Dermatologist (Medical Doctorate + Dermatology Residency)",
+            "Design Verification Engineer (Electrical / Computer Engineering Bachelor's)",
+            "Development Director (Non-Profit) (Public Administration / Communications Bachelor's)",
+            "Developmental Psychologist (Developmental Psychology Ph.D.)",
+            "DevOps Engineer (Cloud Computing / Computer Science Bachelor's)",
+            "Diagnostic Medical Sonographer (Ultrasound Technology Certificate / ARDMS Registration)",
+            "Diagnostic Molecular Scientist (Molecular Biology / Clinical Laboratory Science Bachelor's)",
+            "Diesel Mechanic (Heavy Truck ASE Certification)",
+            "Dietetic Technician (Registered) (Dietetics / Nutrition Science Associate or Bachelor's)",
+            "Digital Forensics Analyst (Computer Forensics / Cybersecurity Bachelor's)",
+            "Digital Marketing Analytics Director (Marketing Analytics / Statistics Master's)",
+            "Digital Preservationist (Library & Information Science Master's)",
+            "Diplomat / Foreign Service Officer (International Relations / Political Science Bachelor's or Master's)",
+            "Director of Photography (Academic Study) (Film & Media Arts Master's)",
+            "Disaster Recovery Specialist (Information Technology Risk Management Bachelor's)",
+            "Dispatcher (Emergency Services Communications Training)",
+            "Document Management Specialist (Information Science / Business Administration Bachelor's)",
+            "Dosimetrist (Medical) (Medical Dosimetry Bachelor's or Graduate Certificate)",
+            "Drug Safety Physician (Medical Doctorate)",
+            "Ecological Restoration Planner (Ecology / Environmental Engineering Master's)",
+            "Economic Development Specialist (Economics / Urban Studies Bachelor's)",
+            "Economist (Economics Master's / Ph.D.)",
+            "Editor (English / Journalism / Communications Bachelor's)",
+            "Education Administrator (Educational Leadership Master's / Doctorate)",
+            "Educational Audiologist (Doctor of Audiology)",
+            "Educational Psychometrist (Educational Psychology / Psychometrics Master's)",
+            "Elections Director (Public Administration / Political Science Bachelor's)",
+            "Electrical Engineer (Electrical Engineering Bachelor's)",
+            "Electrical Power Systems Engineer (Electrical Power Engineering Bachelor's)",
+            "Electrician (Journeyman / Master Electrician License via 4-Year Apprenticeship)",
+            "Electrochemical Engineer (Chemical Engineering / Electrochemistry Ph.D.)",
+            "Electromechanical Systems Engineer (Robotics / Electrical Engineering Bachelor's)",
+            "Electronics Engineer (Electronics Engineering Technology Bachelor's)",
+            "Embedded Systems Engineer (Computer Engineering / Electronics Bachelor's)",
+            "Emergency Management Director (Public Safety / Emergency Management Bachelor's)",
+            "Emergency Medical Technician (EMT) (NREMT Certification / Emergency Care Training)",
+            "Endocrinologist (Medical Doctorate + Endocrinology Fellowship)",
+            "Enterprise Account Executive (B2B Tech Sales Portfolio / Proven Sales Track Record)",
+            "Enterprise Architect (Information Technology Management Master's)",
+            "Environmental Engineer (Environmental Engineering Bachelor's)",
+            "Environmental Economist (Environmental Economics / Resource Policy Ph.D.)",
+            "Environmental Health Director (Public Health Master's / Environmental Health Ph.D.)",
+            "Environmental Scientist (Environmental Science / Ecology Bachelor's)",
+            "Environmental Toxicologist (Toxicology / Environmental Chemistry Ph.D.)",
+            "Enzyme Engineer (Biochemistry / Protein Engineering Ph.D.)",
+            "Epidemiologist (Public Health - MPH / Epidemiology Master's or Ph.D.)",
+            "Epidemiology Investigator (Epidemiology / Public Health Master's)",
+            "Equity Research Analyst (Finance / Economics Bachelor's)",
+            "Ergonomist (Industrial Engineering / Kinesiology Master's)",
+            "Esthetician (State Skincare Specialist Licensure)",
+            "Ethnomusicologist (Ethnomusicology / Anthropology Ph.D.)",
+            "Ethologist (Animal Behavior / Zoology Ph.D.)",
+            "Evolutionary Biologist (Evolutionary Biology / Ecology Ph.D.)",
+            "Executive Assistant (Corporate Administrative Training)",
+            "Executive Coach (Organizational Psychology / Leadership Graduate Degree)",
+            "Exoplanetary Scientist (Astrophysics / Planetary Science Ph.D.)",
+            "Experimental Psychologist (Experimental Psychology Ph.D.)",
+            "Fabricator / Precision Welder (AWS Structural Welding Certification)",
+            "Failure Analysis Engineer (Materials / Mechanical Engineering Bachelor's)",
+            "Family Nurse Practitioner (Master or Doctor of Science in Nursing)",
+            "Farm and Ranch Manager (Agricultural Management OJT)",
+            "Fermentation Scientist (Biochemical Engineering / Microbiology Master's)",
+            "Financial Analyst (Finance / Economics Bachelor's)",
+            "Financial Econometrician (Quantitative Economics / Econometrics Ph.D.)",
+            "Financial Engineering Specialist (Financial Engineering Master's)",
+            "Financial Quantitative Analyst (Quantitative Finance / Financial Engineering Master's / Ph.D.)",
+            "Financial Risk Manager (FRM) (Finance / Risk Management Bachelor's)",
+            "Firefighter (Fire Academy Training + EMT Certification)",
+            "Fisheries Biologist (Fisheries Science / Marine Biology Master's)",
+            "Flight Attendant (FAA Certified Airline Training Program)",
+            "Flight Test Engineer (Aerospace Engineering Bachelor's)",
+            "Fluid Dynamics Engineer (Mechanical Engineering / Physics Graduate Degree)",
+            "Food Process Engineer (Agricultural and Food Engineering Bachelor's)",
+            "Food Scientist & Technologist (Food Science / Agricultural Sciences Bachelor's)",
+            "Food Service Manager (ServSafe Manager Certification / Industry Experience)",
+            "Food Toxicologist (Food Science / Toxicology Ph.D.)",
+            "Forensic Anthropologist (Physical Anthropology Ph.D.)",
+            "Forensic Odontologist (Doctor of Dental Surgery + Forensic Odontology Training)",
+            "Forensic Pathologist (Medical Doctorate + Pathology Residency & Forensic Fellowship)",
+            "Forensic Psychiatrist (Medical Doctorate + Psychiatry Residency & Forensic Fellowship)",
+            "Forensic Psychologist (Forensic / Clinical Psychology Ph.D. or Psy.D.)",
+            "Forensic Science Technician (Forensic Science / Chemistry Bachelor's)",
+            "Forester (Forestry / Natural Resources Management Bachelor's)",
+            "Foundation Director (Public Policy / Philanthropy Graduate Degree)",
+            "FP&A Manager (Financial Planning & Analysis / Corporate Finance Bachelor's)",
+            "Forklift Operator (OSHA Forklift Operator Certification)",
+            "Game Theory Analyst (Applied Mathematics / Economics Ph.D.)",
+            "Gastroenterologist (Medical Doctorate + Gastroenterology Fellowship)",
+            "Gas Plant Operator (Industrial Gas/Petroleum Processing Training)",
+            "Gene Therapy Scientist (Genetics / Molecular Biology Ph.D.)",
+            "General Counsel (Corporate) (Juris Doctor Law Degree)",
+            "Genetic Counselor (Genetic Counseling / Medical Genetics Master's)",
+            "Genetic Epidemiologist (Epidemiology / Statistical Genetics Ph.D.)",
+            "Genome Analytics Specialist (Bioinformatics / Genomics Master's)",
+            "Geochemist (Geochemistry / Geology Ph.D.)",
+            "Geodesist (Geodetic Science / Geomatics Master's)",
+            "Geologist / Geoscientist (Geological Sciences / Earth Sciences Bachelor's)",
+            "Geomorphologist (Physical Geography / Earth Sciences Ph.D.)",
+            "Geotechnical Engineer (Civil / Geotechnical Engineering Bachelor's)",
+            "Geriatric Nurse Practitioner (Advanced Practice Nursing Graduate Degree)",
+            "Gerontologist (Gerontology Master's or Ph.D.)",
+            "GIS Manager (Geographic Information Systems Master's)",
+            "Glaciologist (Geology / Hydrology / Polar Studies Ph.D.)",
+            "Glazier (Glass Installation Apprenticeship)",
+            "Government Relations Director (Political Science / Public Policy Master's)",
+            "Graphic Designer (Graphic Design / Fine Arts BFA)",
+            "Graphic Designer (Arts & Culture) (Graphic Design / Visual Communication BFA)",
+            "Grant Writer (Institutional) (English / Communications / Rhetoric Bachelor's)",
+            "Groundwater Hydrologist (Hydrology / Hydrogeology Master's)",
+            "Guidance / School Counselor (School Counseling / Educational Psychology Master's)",
+            "Hairdresser (State Cosmetology Licensure)",
+            "Hazardous Materials Engineer (Environmental / Chemical Engineering Bachelor's)",
+            "Health Care Risk Manager (Healthcare Administration / Nursing Bachelor's)",
+            "Health Economist (Health Economics / Public Health Ph.D.)",
+            "Health Informatics Specialist (Health Information Management / Health Data Science Bachelor's)",
+            "Health Physicist (Nuclear Engineering / Health Physics Master's)",
+            "Health Policy Analyst (Public Health Policy Master's)",
+            "Heavy Equipment Operator (Apprenticeship / OSHA Earthmoving Equipment License)",
+            "Heavy Truck Driver (CDL) (Commercial Driver's License Class A)",
+            "Hematologist (Medical Doctorate + Hematology Fellowship)",
+            "Herpetologist (Zoology / Herpetology Ph.D.)",
+            "High School Teacher (Secondary Education Bachelor's in target subject + Licensure)",
+            "High-Frequency Trading Engineer (Computer Engineering / Quantitative Finance Master's)",
+            "Highway Design Engineer (Civil Engineering Bachelor's)",
+            "Historic Preservationist (Historic Preservation Master's)",
+            "Histotechnologist (Medical Laboratory Science Bachelor's)",
+            "Home Health Aide (State Health Department Caregiver Certificate)",
+            "Human Capital Strategist (Human Resources / Organizational Development Master's)",
+            "Human Factors Engineer & Ergonomist (Industrial Engineering / Psychology Graduate Degree)",
+            "Human Resources Manager (Human Resources Management / Business Administration Bachelor's)",
+            "Human Rights Lawyer (Juris Doctor Law Degree + International Law Training)",
+            "HVAC Design Engineer (Mechanical Engineering Bachelor's)",
+            "HVAC Technician (EPA Section 608 Certification / Trade School Diploma)",
+            "Hydrogeologist (Geology / Hydrogeology Master's)",
+            "Hydroelectric Plant Operator (Power Generation Infrastructure OJT)",
+            "Hydrologist (Hydrology / Environmental Science Bachelor's)",
+            "Ichthyologist (Marine Biology / Zoology Ph.D.)",
+            "Immunologist (Immunology Ph.D. or Medical Doctorate)",
+            "Industrial Designer (Industrial Design / Product Design Bachelor's)",
+            "Industrial Ecologist (Industrial Ecology / Environmental Engineering Master's)",
+            "Industrial Engineer (Industrial Engineering Bachelor's)",
+            "Industrial Hygienist (Occupational Health / Industrial Hygiene Master's)",
+            "Industrial Janitorial Supervisor (Commercial Facility Operations Management OJT)",
+            "Industrial Machinery Mechanic (Millwright & Industrial System Apprenticeship)",
+            "Industrial-Organizational Psychologist (Industrial-Organizational Psychology Master's / Ph.D.)",
+            "Insurance Sales Agent (State Insurance Producer License)",
+            "Ironworker (Structural Iron/Steel Reinforcement Apprenticeship)",
+            "Line Cook (Culinary Kitchen Training)",
+            "Locomotive Engineer (Federal Railroad Administration - FRA Licensure)",
+            "Lodging Manager (Hospitality Management OJT)",
+            "Locksmith (State Locksmith Licensure / Mechanical Security Training)",
+            "Magnetic Resonance Imaging (MRI) Technologist (MRI Radiologic Technology Certificate)",
+            "Makeup Artist (Cosmetology / Specialized Artistry Certification)",
+            "Mason (Stone & Concrete Construction Apprenticeship)",
+            "Medical Assistant (Certified Medical Assistant - CMA designation)",
+            "Medical Records Technician (Registered Health Information Technician - RHIT Certificate)",
+            "Medical Scribe (Clinical Terminology Training Certificate)",
+            "Millwright (Industrial Machine Precision Installation Apprenticeship)",
+            "Mobile Heavy Equipment Mechanic (Diesel Engine & Hydraulics Trade Track)",
+            "Mortician / Funeral Arranger (Funeral Services Associate / Mortuary Certification)",
+            "Musical Theater Performer (Musical Theater / Vocal Performance BFA)",
+            "Non-Destructive Testing (NDT) Technician (ASNT Level I/II Infrastructure Testing Certification)",
+            "Optometric Technician (Certified Paraoptometric - CPO designation)",
+            "Painter & Paperhanger (Finishing Trades Training)",
+            "Paralegal (Paralegal Studies Professional Certificate)",
+            "Paramedic (Advanced Life Support Paramedic Licensure / NREMT-P)",
+            "Personal Fitness Trainer (NASM / ACE NCCA-Accredited Certification)",
+            "Pest Control Specialist (State Pesticide Applicator License)",
+            "Phlebotomist (Certified Phlebotomy Technician - CPT designation)",
+            "Pipefitter & Steamfitter (High-Pressure Piping Apprenticeship)",
+            "Plumber (Journeyman / Master Plumber Licensure via Apprenticeship)",
+            "Police Officer (Police Academy Training + Peace Officer Certification)",
+            "Postal Service Worker (Postal Exam / Federal Civil Service OJT)",
+            "Power Plant Operator (Control Room Operations Training)",
+            "Printing Press Operator (Industrial Press Production OJT)",
+            "Private Security Guard (State Security Guard Registration Guard Card)",
+            "Procurement Clerk (Supply & Inventory Clerk Training)",
+            "Property Manager (Real Estate Property Management Certificate)",
+            "Radiologic Technologist (X-Ray Tech Certificate / ARRT Certification)",
+            "Real Estate Broker / Agent (State Real Estate Salesperson License)",
+            "Receptionist (Office Operations OJT)",
+            "Registered Nurse (RN) (Bachelor of Science in Nursing - BSN, or ADN + Board Licensure)",
+            "Regulatory Affairs Manager (Pharmaceutical Sciences / Life Sciences / Food & Drug Law Master's)",
+            "Refuse Collector (Sanitation Operations OJT)",
+            "Retail Store Manager (Retail Corporate Leadership Operations Track)",
+            "Roofer (Roofing & Waterproofing Systems OJT)",
+            "Sales Representative (Wholesale & Manufacturing) (B2B Client Management OJT)",
+            "Sheet Metal Worker (HVAC / Ductwork Sheet Metal Apprenticeship)",
+            "Ship Captain (USCG Merchant Mariner Credential Master License)",
+            "Solar Photovoltaic Installer (NABCEP Solar Certification / Electrical Trade Track)",
+            "Sound Engineering Technician (Audio Production Studio Training Certificate)",
+            "Stage Manager (Dance & Theatre) (Stage Management BFA / Theater Arts BA)",
+            "Structural Engineer (Structural Engineering / Civil Engineering Bachelor's or Master's)",
+            "Surgeon (Medical Doctorate - M.D. / D.O. + Surgical Residency & Fellowship)",
+            "Surgical Technologist (Certified Surgical Technologist - CST designation)",
+            "Surveying Technician (Geospatial Mapping Field OJT)",
+            "Systems Analyst (Computer Science / Business Information Systems Bachelor's)",
+            "Tattoo Artist (Bloodborne Pathogens Certificate + Formal Studio Apprenticeship)",
+            "Tax Preparer (IRS Registered Tax Return Preparer / PTIN License)",
+            "Telecommunications Equipment Installer (Fiber Optic / Telecom Systems Certificate)",
+            "Title Examiner (Real Estate Title Insurance Analytics OJT)",
+            "Tool and Die Maker (Precision Precision Tooling Apprenticeship)",
+            "Train Conductor (Railroad Operating Book of Rules Certification)",
+            "Travel Agent (GDS Reservation System Certificate)",
+            "Tree Trimmer & Arborist (ISA Certified Arborist designation)",
+            "TSA Agent (Department of Homeland Security Academy Training)",
+            "Tutor (Private) (Subject-Matter Expertise Profile)",
+            "Urban Planner (Urban and Regional Planning Master's Degree)",
+            "Water Treatment Plant Operator (State Water Quality Board Treatment Certification)",
+            "Web Developer (Self-Taught/Bootcamp) (Technical Code Portfolio Engineering Track)",
+            "Welder (American Welding Society - AWS Certified Welder)",
+            "Wind Turbine Technician (Wind Energy Technology Technical Certificate)",
+            "Zoologist (Zoology / Animal Biology Bachelor's or Master's)"
+        ];
+
+        const countrySelect = document.getElementById("country");
+        const regionSelect = document.getElementById("region");
+        const form = document.getElementById("job-form");
+        const listingsContainer = document.getElementById("listings");
+        const message = document.getElementById("message");
+
+        function compareText(a, b) {
+            return a.localeCompare(b, undefined, {
+                sensitivity: "base",
+                numeric: true
+            });
+        }
+
+        function loadJobs() {
+            const jobSelect = document.getElementById("job");
+            jobSelect.replaceChildren();
+
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Choose a job";
+            jobSelect.appendChild(placeholder);
+
+            const uniqueJobs = [...new Set(JOBS)].sort(compareText);
+
+            uniqueJobs.forEach(job => {
+                const option = document.createElement("option");
+                option.value = job;
+                option.textContent = job;
+                jobSelect.appendChild(option);
+            });
+        }
+
+        function loadCountries() {
+            try {
+                const displayCountry = new Intl.DisplayNames(["en"], {
+                    type: "region"
+                });
+
+                const countries = [];
+
+                for (let first = 65; first <= 90; first++) {
+                    for (let second = 65; second <= 90; second++) {
+                        const code = String.fromCharCode(first, second);
+                        const name = displayCountry.of(code);
+
+                        if (name && name !== code && !name.startsWith("Unknown")) {
+                            countries.push({ code, name });
+                        }
+                    }
+                }
+
+                countries.sort((a, b) => compareText(a.name, b.name));
+
+                countries.forEach(country => {
+                    const option = document.createElement("option");
+                    option.value = country.name;
+                    option.textContent = country.name;
+                    countrySelect.appendChild(option);
+                });
+            } catch {
+                countrySelect.innerHTML =
+                    '<option value="">Country list unavailable</option>';
+                message.textContent =
+                    "Your browser could not create the country list.";
+            }
+        }
+
+        async function loadRegions(country) {
+            regionSelect.disabled = true;
+            regionSelect.innerHTML =
+                '<option value="">Loading regions…</option>';
+            message.textContent = "";
+
+            try {
+                const response = await fetch(
+                    "https://countriesnow.space/api/v0.1/countries/states",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ country })
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Region request failed.");
+                }
+
+                const result = await response.json();
+                const regions = result.data?.states || [];
+                regions.sort((a, b) => compareText(a.name, b.name));
+
+                regionSelect.innerHTML =
+                    '<option value="">Choose a region/state/province</option>';
+
+                regions.forEach(region => {
+                    const option = document.createElement("option");
+                    option.value = region.name;
+                    option.textContent = region.name;
+                    regionSelect.appendChild(option);
+                });
+
+                if (regions.length) {
+                    regionSelect.disabled = false;
+                } else {
+                    regionSelect.innerHTML =
+                        '<option value="">No regions available</option>';
+                    message.textContent =
+                        "No regions were returned for this country.";
+                }
+            } catch {
+                regionSelect.innerHTML =
+                    '<option value="">Could not load regions</option>';
+                regionSelect.disabled = true;
+                message.textContent =
+                    "Could not load regions. Check your internet connection and try again.";
+            }
+        }
+
+        countrySelect.addEventListener("change", () => {
+            message.textContent = "";
+
+            if (countrySelect.value) {
+                loadRegions(countrySelect.value);
+            } else {
+                regionSelect.disabled = true;
+                regionSelect.innerHTML =
+                    '<option value="">Choose a country first</option>';
+            }
+        });
+
+        function getListings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                return Array.isArray(data) ? data : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function getActiveListings() {
+            const now = Date.now();
+
+            // Keep only listings with a valid saved date that are less
+            // than 30 days old.
+            const activeListings = getListings().filter(listing => {
+                const savedAt = Number(listing.savedAt);
+
+                return Number.isFinite(savedAt) &&
+                    savedAt > 0 &&
+                    now - savedAt < THIRTY_DAYS_MS;
+            });
+
+            try {
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    JSON.stringify(activeListings)
+                );
+            } catch {
+                // Continue displaying active listings if storage fails.
+            }
+
+            return activeListings;
+        }
+
+        function makeGroup(title, className) {
+            const group = document.createElement("section");
+            group.className = className;
+
+            const heading = document.createElement("h3");
+            heading.textContent = title;
+            group.appendChild(heading);
+
+            return group;
+        }
+
+        function addListingDetail(container, label, value) {
+            const paragraph = document.createElement("p");
+            const strong = document.createElement("strong");
+            strong.textContent = `${label}: `;
+            paragraph.appendChild(strong);
+            paragraph.appendChild(
+                document.createTextNode(value || "Not provided")
+            );
+            container.appendChild(paragraph);
+        }
+
+        function renderListings() {
+            const listings = getActiveListings();
+            listingsContainer.replaceChildren();
+
+            if (listings.length === 0) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = "No current job listings saved.";
+                listingsContainer.appendChild(empty);
+                return;
+            }
+
+            const jobGroups = new Map();
+
+            listings.forEach(listing => {
+                const job = listing.job || "Unspecified job";
+                const country = listing.country || "Unspecified country";
+                const region = listing.region || "Unspecified region";
+
+                if (!jobGroups.has(job)) jobGroups.set(job, new Map());
+
+                const countryGroups = jobGroups.get(job);
+                if (!countryGroups.has(country)) {
+                    countryGroups.set(country, new Map());
+                }
+
+                const regionGroups = countryGroups.get(country);
+                if (!regionGroups.has(region)) regionGroups.set(region, []);
+
+                regionGroups.get(region).push(listing);
+            });
+
+            [...jobGroups.keys()].sort(compareText).forEach(job => {
+                const jobSection = makeGroup(job, "job-group");
+                const countryGroups = jobGroups.get(job);
+
+                [...countryGroups.keys()].sort(compareText).forEach(country => {
+                    const countrySection = makeGroup(country, "country-group");
+                    const regionGroups = countryGroups.get(country);
+
+                    [...regionGroups.keys()].sort(compareText).forEach(region => {
+                        const regionSection = makeGroup(region, "region-group");
+
+                        const sortedListings = [...regionGroups.get(region)]
+                            .sort((a, b) =>
+                                compareText(a.address || "", b.address || "")
+                            );
+
+                        sortedListings.forEach(listing => {
+                            const listingElement = document.createElement("div");
+                            listingElement.className = "listing";
+
+                            addListingDetail(
+                                listingElement,
+                                "Address",
+                                listing.address || "No address entered"
+                            );
+                            addListingDetail(
+                                listingElement,
+                                "Contact telephone number",
+                                listing.telephone
+                            );
+                            addListingDetail(
+                                listingElement,
+                                "Income / Salary",
+                                listing.income
+                            );
+                            addListingDetail(
+                                listingElement,
+                                "Work hours / schedule",
+                                listing.workHours
+                            );
+                            addListingDetail(
+                                listingElement,
+                                "Job description and other details",
+                                listing.description
+                            );
+
+                            regionSection.appendChild(listingElement);
+                        });
+
+                        countrySection.appendChild(regionSection);
+                    });
+
+                    jobSection.appendChild(countrySection);
+                });
+
+                listingsContainer.appendChild(jobSection);
+            });
+        }
+
+        form.addEventListener("submit", event => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+
+            const listings = getActiveListings();
+
+            const listing = {
+                job: document.getElementById("job").value,
+                country: countrySelect.value,
+                region: regionSelect.value,
+                address: document.getElementById("address").value.trim(),
+                telephone: document.getElementById("telephone").value.trim(),
+                income: document.getElementById("income").value.trim(),
+                workHours: document.getElementById("work-hours").value.trim(),
+                description: document.getElementById("description").value.trim(),
+                savedAt: Date.now()
+            };
+
+            listings.push(listing);
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
+
+                message.textContent =
+                    "Job listing saved. It will be removed after 30 days.";
+                form.reset();
+                regionSelect.disabled = true;
+                regionSelect.innerHTML =
+                    '<option value="">Choose a country first</option>';
+
+                renderListings();
+            } catch {
+                message.textContent =
+                    "Could not save the listing in this browser.";
+            }
+        });
+
+        loadJobs();
+        loadCountries();
+        renderListings();
+    </script>
+</body>
+</html>

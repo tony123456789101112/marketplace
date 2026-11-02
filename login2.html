@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Access</title>
+
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .form-card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            width: 340px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin: 0 0 25px;
+            text-align: center;
+            color: #222;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: 0;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .action-btn:hover { background: #0056b3; }
+        .register-mode-btn { background: #28a745; }
+        .register-mode-btn:hover { background: #218838; }
+
+        .toggle-link {
+            margin-top: 20px;
+            color: #007bff;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .status-msg {
+            min-height: 20px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <main class="form-card">
+        <h2 id="form-title">Finding jobs with or without degree worldwide? Want to work in a foreign city? Sign in to find one!</h2>
+
+        <form id="auth-form">
+            <input
+                type="text"
+                id="username"
+                class="input-box"
+                placeholder="Username"
+                autocomplete="username"
+                required
+            >
+
+            <input
+                type="password"
+                id="password"
+                class="input-box"
+                placeholder="Password"
+                autocomplete="current-password"
+                required
+            >
+
+            <button id="primary-btn" class="action-btn" type="submit">
+                Sign In
+            </button>
+        </form>
+
+        <div id="toggle-text" class="toggle-link" role="button" tabindex="0">
+            Don't have an account? Create new user
+        </div>
+
+        <p id="status-display" class="status-msg" aria-live="polite"></p>
+    </main>
+
+    <script>
+        let isRegisterMode = false;
+
+        const form = document.getElementById("auth-form");
+        const title = document.getElementById("form-title");
+        const button = document.getElementById("primary-btn");
+        const toggleText = document.getElementById("toggle-text");
+        const message = document.getElementById("status-display");
+        const usernameInput = document.getElementById("username");
+        const passwordInput = document.getElementById("password");
+
+        function toggleMode() {
+            isRegisterMode = !isRegisterMode;
+            message.textContent = "";
+
+            if (isRegisterMode) {
+                title.textContent = "Create New User";
+                button.textContent = "Register Account";
+                button.className = "action-btn register-mode-btn";
+                toggleText.textContent = "Already have an account? Login here";
+                passwordInput.autocomplete = "new-password";
+            } else {
+                title.textContent =
+                    "Finding jobs with or without degree worldwide? Want to work in a foreign city? Sign in to find one!";
+                button.textContent = "Sign In";
+                button.className = "action-btn";
+                toggleText.textContent =
+                    "Don't have an account? Create new user";
+                passwordInput.autocomplete = "current-password";
+            }
+        }
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const storageKey = `user_profile_${username}`;
+
+            if (!username || !password.trim()) {
+                message.style.color = "red";
+                message.textContent = "Enter both a username and password.";
+                return;
+            }
+
+            if (isRegisterMode) {
+                if (localStorage.getItem(storageKey) !== null) {
+                    message.style.color = "red";
+                    message.textContent = "That username is already registered.";
+                    return;
+                }
+
+                localStorage.setItem(storageKey, password);
+                message.style.color = "green";
+                message.textContent = "Account created. You can now sign in.";
+
+                setTimeout(() => {
+                    if (isRegisterMode) toggleMode();
+                }, 1200);
+                return;
+            }
+
+            const savedPassword = localStorage.getItem(storageKey);
+            const isDemoAdmin = username === "admin" && password === "1234";
+
+            if (isDemoAdmin || savedPassword === password) {
+                localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("currentUser", username);
+                message.style.color = "green";
+                message.textContent = "Login successful. Redirecting...";
+
+                setTimeout(() => {
+                    window.location.href = "dashboard.html";
+                }, 500);
+            } else {
+                message.style.color = "red";
+                message.textContent = "Incorrect username or password.";
+            }
+        });
+
+        toggleText.addEventListener("click", toggleMode);
+
+        toggleText.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleMode();
+            }
+        });
+    </script>
+</body>
+</html>

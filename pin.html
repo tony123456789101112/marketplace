@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage Map Pins</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 30px 20px;
+      color: #333;
+    }
+
+    main {
+      max-width: 800px;
+      margin: auto;
+      padding: 25px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .pin-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-top: 1px solid #ddd;
+    }
+
+    .pin-details {
+      overflow-wrap: anywhere;
+    }
+
+    .pin-details p {
+      margin: 5px 0;
+      color: #555;
+    }
+
+    .pin-photo {
+      display: block;
+      max-width: 100px;
+      max-height: 70px;
+      margin-top: 8px;
+      object-fit: cover;
+    }
+
+    button {
+      flex-shrink: 0;
+      padding: 9px 13px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #b02a37;
+    }
+
+    #status {
+      min-height: 1.5em;
+    }
+
+    @media (max-width: 500px) {
+      .pin-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Manage Map Pins</h1>
+    <p>Pins saved by this browser are listed below.</p>
+    <p id="status" aria-live="polite"></p>
+    <div id="pins"></div>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "productMapPins";
+    const pinsContainer = document.getElementById("pins");
+    const status = document.getElementById("status");
+
+    function readPins() {
+      try {
+        const pins = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        return Array.isArray(pins) ? pins : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function loadPins() {
+      pinsContainer.replaceChildren();
+
+      let pins;
+
+      try {
+        pins = readPins();
+      } catch (error) {
+        status.textContent = "Could not access browser storage: " + error.message;
+        return;
+      }
+
+      if (pins.length === 0) {
+        pinsContainer.textContent = "No saved pins found in this browser.";
+        return;
+      }
+
+      pins.forEach((pin, index) => {
+        const row = document.createElement("div");
+        row.className = "pin-row";
+
+        const details = document.createElement("div");
+        details.className = "pin-details";
+
+        const title = document.createElement("strong");
+        title.textContent = pin.title || "Untitled pin";
+        details.appendChild(title);
+
+        const description = document.createElement("p");
+        description.textContent = pin.text || "No additional information.";
+        details.appendChild(description);
+
+        const location = document.createElement("p");
+        location.textContent =
+          `Location: ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}`;
+        details.appendChild(location);
+
+        if (pin.photo) {
+          const image = document.createElement("img");
+          image.src = pin.photo;
+          image.alt = pin.title ? `Photo of ${pin.title}` : "Pin photo";
+          image.className = "pin-photo";
+          details.appendChild(image);
+        }
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete pin";
+
+        deleteButton.addEventListener("click", () => {
+          const currentPins = readPins();
+
+          if (index >= currentPins.length) {
+            status.textContent = "Pin not found. The list has been refreshed.";
+            loadPins();
+            return;
+          }
+
+          currentPins.splice(index, 1);
+
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentPins));
+            status.textContent = "Pin deleted.";
+            loadPins();
+          } catch (error) {
+            status.textContent = "Could not delete the pin: " + error.message;
+          }
+        });
+
+        row.append(details, deleteButton);
+        pinsContainer.appendChild(row);
+      });
+    }
+
+    loadPins();
+  </script>
+</body>
+</html>

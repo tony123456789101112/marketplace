@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Physical Shops</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    #map {
+      height: 65vh;
+      min-height: 400px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .hint {
+      color: #555;
+    }
+
+    .pin-photo {
+      display: block;
+      max-width: 220px;
+      max-height: 150px;
+      margin-top: 8px;
+      object-fit: cover;
+    }
+
+    .pin-info {
+      max-width: 240px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Browse Physical Shops</h1>
+  <p class="hint">Click a pin to view shop information. This map is read-only.</p>
+  <a href="marketplace.html">Back to Marketplace</a>
+
+  <div id="map" aria-label="Read-only map of physical shops"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const STORAGE_KEY = "productMapPins";
+
+    const map = L.map("map").setView([20, 0], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Prevent clicking the map from creating pins or opening an add form.
+    map.on("click", (event) => {
+      // Intentionally read-only.
+    });
+
+    function getPins() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved) ? saved : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function showPin(pin) {
+      if (
+        typeof pin.lat !== "number" ||
+        typeof pin.lng !== "number"
+      ) {
+        return;
+      }
+
+      const marker = L.marker([pin.lat, pin.lng]).addTo(map);
+      const content = document.createElement("div");
+      content.className = "pin-info";
+
+      const title = document.createElement("strong");
+      title.textContent = pin.title || "Shop";
+      content.appendChild(title);
+
+      if (pin.text) {
+        const description = document.createElement("p");
+        description.textContent = pin.text;
+        content.appendChild(description);
+      }
+
+      if (pin.photo) {
+        const image = document.createElement("img");
+        image.src = pin.photo;
+        image.alt = pin.title ? `Photo of ${pin.title}` : "Shop photo";
+        image.className = "pin-photo";
+        content.appendChild(image);
+      }
+
+      marker.bindPopup(content);
+    }
+
+    // Display saved pins; clicking a marker reveals its information.
+    getPins().forEach(showPin);
+  </script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Workspace - Postgraduate Careers</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+            color: #333;
+        }
+
+        .job-group,
+        .country-group,
+        .region-group,
+        .listing {
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .job-group {
+            background: #f7f9fc;
+        }
+
+        .country-group {
+            margin-left: 12px;
+            background: #fff;
+        }
+
+        .region-group {
+            margin-left: 12px;
+            background: #fafafa;
+        }
+
+        .listing {
+            margin-left: 12px;
+        }
+
+        .job-group > h2 {
+            margin-top: 0;
+        }
+
+        .listing p {
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .empty {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Employee Workspace</h1>
+    <h2>Available jobs — Alphabetical Groups</h2>
+    <div id="listings"></div>
+
+    <script>
+        const STORAGE_KEY = "employerJobListings";
+        const listingsContainer = document.getElementById("listings");
+
+        function compareText(a, b) {
+            return a.localeCompare(b, undefined, {
+                sensitivity: "base",
+                numeric: true
+            });
+        }
+
+        function getListings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                return Array.isArray(data) ? data : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function makeGroup(title, className, headingTag = "h3") {
+            const group = document.createElement("section");
+            group.className = className;
+
+            const heading = document.createElement(headingTag);
+            heading.textContent = title;
+            group.appendChild(heading);
+
+            return group;
+        }
+
+        function addListingDetail(container, label, value) {
+            const paragraph = document.createElement("p");
+            const strong = document.createElement("strong");
+
+            strong.textContent = `${label}: `;
+            paragraph.appendChild(strong);
+            paragraph.appendChild(
+                document.createTextNode(value || "Not provided")
+            );
+
+            container.appendChild(paragraph);
+        }
+
+        function renderListings() {
+            const listings = getListings();
+            listingsContainer.replaceChildren();
+
+            if (listings.length === 0) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = "No job listings are available yet.";
+                listingsContainer.appendChild(empty);
+                return;
+            }
+
+            const jobGroups = new Map();
+
+            listings.forEach(listing => {
+                const job = listing.job || "Unspecified job";
+                const country = listing.country || "Unspecified country";
+                const region = listing.region || "Unspecified region";
+
+                if (!jobGroups.has(job)) {
+                    jobGroups.set(job, new Map());
+                }
+
+                const countryGroups = jobGroups.get(job);
+
+                if (!countryGroups.has(country)) {
+                    countryGroups.set(country, new Map());
+                }
+
+                const regionGroups = countryGroups.get(country);
+
+                if (!regionGroups.has(region)) {
+                    regionGroups.set(region, []);
+                }
+
+                regionGroups.get(region).push(listing);
+            });
+
+            [...jobGroups.keys()].sort(compareText).forEach(job => {
+                const jobSection = makeGroup(job, "job-group", "h2");
+                const countryGroups = jobGroups.get(job);
+
+                [...countryGroups.keys()].sort(compareText).forEach(country => {
+                    const countrySection = makeGroup(country, "country-group");
+                    const regionGroups = countryGroups.get(country);
+
+                    [...regionGroups.keys()].sort(compareText).forEach(region => {
+                        const regionSection = makeGroup(region, "region-group");
+
+                        const sortedListings = [...regionGroups.get(region)]
+                            .sort((a, b) =>
+                                compareText(a.address || "", b.address || "")
+                            );
+
+                        sortedListings.forEach(listing => {
+                            const article = document.createElement("article");
+                            article.className = "listing";
+
+                            addListingDetail(
+                                article,
+                                "Address",
+                                listing.address || "No address entered"
+                            );
+                            addListingDetail(
+                                article,
+                                "Contact telephone number",
+                                listing.telephone
+                            );
+                            addListingDetail(
+                                article,
+                                "Income / Salary",
+                                listing.income
+                            );
+                            addListingDetail(
+                                article,
+                                "Work hours / schedule",
+                                listing.workHours
+                            );
+                            addListingDetail(
+                                article,
+                                "Job description and other details",
+                                listing.description
+                            );
+
+                            regionSection.appendChild(article);
+                        });
+
+                        countrySection.appendChild(regionSection);
+                    });
+
+                    jobSection.appendChild(countrySection);
+                });
+
+                listingsContainer.appendChild(jobSection);
+            });
+        }
+
+        renderListings();
+    </script>
+</body>
+</html>

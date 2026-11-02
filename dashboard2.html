@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            color: #333;
+            padding: 20px;
+        }
+
+        .portal-card {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .08);
+            text-align: center;
+            max-width: 480px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #28a745;
+            margin: 0 0 15px;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .btn-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .enter-btn {
+            flex: 1 1 120px;
+            padding: 12px 16px;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .employee-btn {
+            background: #007bff;
+        }
+
+        .employer-btn {
+            background: #28a745;
+        }
+
+        .marketplace-btn {
+            background: #6f42c1;
+        }
+
+        .management-btn {
+            background: #d97706;
+            border: 0;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .management-login {
+            display: none;
+            margin-top: 22px;
+            padding: 18px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        .management-login.open {
+            display: block;
+        }
+
+        .management-login label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .management-login input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font: inherit;
+        }
+
+        .management-login button,
+        .logout-btn {
+            margin-top: 14px;
+            padding: 10px 18px;
+            border: 0;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .management-login button {
+            background: #d97706;
+        }
+
+        .logout-btn {
+            background: #666;
+        }
+
+        .message {
+            min-height: 1.4em;
+            margin: 10px 0 0;
+            color: #b42318;
+        }
+
+        @media (max-width: 420px) {
+            .portal-card {
+                padding: 28px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="portal-card">
+        <h1>Postgraduate Careers</h1>
+
+        <p id="welcome-message">Choose a portal to continue.</p>
+
+        <div class="btn-container">
+            <a href="employee.html" class="enter-btn employee-btn">
+                Candidate Portal
+            </a>
+
+            <a href="employer.html" class="enter-btn employer-btn">
+                Employer Portal
+            </a>
+
+            <a href="marketplace.html" class="enter-btn marketplace-btn">
+                Marketplace
+            </a>
+
+            <button
+                type="button"
+                class="enter-btn management-btn"
+                id="management-button">
+                Management Team
+            </button>
+        </div>
+
+        <form id="management-login" class="management-login">
+            <label for="management-password">
+                Management password
+            </label>
+
+            <input
+                id="management-password"
+                type="password"
+                autocomplete="current-password"
+                required>
+
+            <button type="submit">Continue</button>
+            <p id="message" class="message" role="status"></p>
+        </form>
+
+        <button type="button" class="logout-btn" id="logout-button">
+            Log out
+        </button>
+    </main>
+
+    <script>
+        // Keep this check if only logged-in users should use the dashboard.
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.replace("login.html");
+        } else {
+            const user = localStorage.getItem("currentUser") || "user";
+            document.getElementById("welcome-message").textContent =
+                `Welcome, ${user}. Choose a portal to continue.`;
+        }
+
+        const managementButton =
+            document.getElementById("management-button");
+        const managementForm =
+            document.getElementById("management-login");
+        const passwordInput =
+            document.getElementById("management-password");
+        const message =
+            document.getElementById("message");
+
+        managementButton.addEventListener("click", () => {
+            managementForm.classList.toggle("open");
+            message.textContent = "";
+
+            if (managementForm.classList.contains("open")) {
+                passwordInput.focus();
+            }
+        });
+
+        managementForm.addEventListener("submit", event => {
+            event.preventDefault();
+
+            if (passwordInput.value === "FatBallHarry2006$$") {
+                window.location.href = "management.html";
+            } else {
+                message.textContent = "Incorrect password. Please try again.";
+                passwordInput.value = "";
+                passwordInput.focus();
+            }
+        });
+
+        document
+            .getElementById("logout-button")
+            .addEventListener("click", () => {
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("currentUser");
+                window.location.href = "login.html";
+            });
+    </script>
+</body>
+</html>
