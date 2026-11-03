@@ -125,9 +125,9 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Replace these with your values from Supabase → Project Settings → API.
-    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
+    // Replace these with your actual Supabase Project URL and publishable key.
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -186,67 +186,31 @@
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: {
-              data: { username }
-            }
+            options: { data: { username } }
           });
 
           if (error) throw error;
+          if (!data.user) throw new Error("Signup returned no user.");
 
-          if (!data.user) {
-            throw new Error("Signup returned no user. Check your Supabase Auth settings.");
-          }
-
-          if (data.session) {
-            const { error: profileError } = await supabase
-              .from("profiles")
-              .upsert(
-                { id: data.user.id, username },
-                { onConflict: "id" }
-              );
-
-            if (profileError) {
-              throw new Error(
-                "Account created, but saving the profile failed: " +
-                profileError.message
-              );
-            }
-
-            showMessage("Account created. You can now sign in.", "green");
-          } else {
+          if (!data.session) {
             showMessage(
               "Account created. Check your email to confirm it, then sign in.",
               "green"
             );
+          } else {
+            showMessage("Account created. You can now sign in.", "green");
           }
 
           setTimeout(() => {
             if (isRegisterMode) toggleMode();
           }, 1800);
         } else {
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { error } = await supabase.auth.signInWithPassword({
             email,
             password
           });
 
           if (error) throw error;
-
-          const savedUsername =
-            username || data.user.user_metadata?.username || email;
-
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert(
-              { id: data.user.id, username: savedUsername },
-              { onConflict: "id" }
-            );
-
-          if (profileError) {
-            throw new Error(
-              "Signed in, but saving the profile failed: " +
-              profileError.message
-            );
-          }
 
           showMessage("Login successful. Redirecting…", "green");
           setTimeout(() => {
