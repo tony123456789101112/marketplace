@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Account Access</title>
 
   <style>
@@ -56,6 +56,7 @@
     .action-btn:hover { background: #0056b3; }
     .register-mode-btn { background: #28a745; }
     .register-mode-btn:hover { background: #218838; }
+    .action-btn:disabled { opacity: .65; cursor: wait; }
 
     .toggle-link {
       margin-top: 20px;
@@ -77,8 +78,7 @@
 <body>
   <main class="form-card">
     <h2 id="form-title">
-      Finding jobs with or without degree worldwide? Want to work in a foreign city?
-      Want to advertise your physical product online? Sign in to find one!
+      Find jobs, opportunities, and products. Sign in to get started!
     </h2>
 
     <form id="auth-form">
@@ -97,6 +97,7 @@
         class="input-box"
         placeholder="Password"
         autocomplete="current-password"
+        minlength="6"
         required
       >
 
@@ -113,8 +114,10 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
+    // Replace these with your Supabase project values.
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     let isRegisterMode = false;
@@ -127,9 +130,14 @@
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
 
-    // Demo mapping only. Prefer real email addresses for production sign-in.
+    // Demo username-to-email mapping. For a real site, use users' actual email addresses.
     function usernameToEmail(username) {
       return `${username.trim().toLowerCase()}@users.example.com`;
+    }
+
+    function showMessage(text, color) {
+      message.textContent = text;
+      message.style.color = color;
     }
 
     function toggleMode() {
@@ -140,10 +148,10 @@
         title.textContent = "Create New User";
         button.textContent = "Register Account";
         button.className = "action-btn register-mode-btn";
-        toggleText.textContent = "Already have an account? Login here";
+        toggleText.textContent = "Already have an account? Sign in";
         passwordInput.autocomplete = "new-password";
       } else {
-        title.textContent = "Sign in to find jobs, opportunities, and products.";
+        title.textContent = "Find jobs, opportunities, and products. Sign in to get started!";
         button.textContent = "Sign In";
         button.className = "action-btn";
         toggleText.textContent = "Don't have an account? Create new user";
@@ -151,16 +159,12 @@
       }
     }
 
-    function showMessage(text, color) {
-      message.style.color = color;
-      message.textContent = text;
-    }
-
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
+
       if (!username || !password.trim()) {
         showMessage("Enter both a username and password.", "red");
         return;
@@ -171,40 +175,50 @@
 
       try {
         const email = usernameToEmail(username);
-        let result;
 
         if (isRegisterMode) {
-          result = await supabase.auth.signUp({
+          const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: { data: { username } }
           });
 
-          if (result.error) throw result.error;
+          if (error) throw error;
 
-          showMessage(
-            result.data.session
-              ? "Account created. You can now sign in."
-              : "Account created. Check your email to confirm it, then sign in.",
-            "green"
-          );
+          // This insert works when email confirmation is disabled and a session is returned.
+          if (data.user && data.session) {
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .insert({ id: data.user.id, username });
 
-          if (result.data.session) {
-            setTimeout(() => {
-              if (isRegisterMode) toggleMode();
-            }, 1200);
+            if (profileError) throw profileError;
+          } else {
+            showMessage(
+              "Account created. If email confirmation is enabled, confirm the account before signing in.",
+              "green"
+            );
+            return;
           }
+
+          showMessage("Account created. You can now sign in.", "green");
+          setTimeout(() => {
+            if (isRegisterMode) toggleMode();
+          }, 1200);
         } else {
-          result = await supabase.auth.signInWithPassword({ email, password });
-          if (result.error) throw result.error;
+          const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) throw error;
 
           showMessage("Login successful. Redirecting…", "green");
           setTimeout(() => {
-            window.location.href = "dashboard.html";
+            window.location.href = "users.html";
           }, 500);
         }
       } catch (error) {
-        showMessage(error.message || "Authentication failed.", "red");
+        showMessage(error.message || "Something went wrong.", "red");
       } finally {
         button.disabled = false;
       }
@@ -220,10 +234,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
