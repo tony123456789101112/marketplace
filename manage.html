@@ -5,27 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Manage Job Listings</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
-    .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid #ddd; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #333;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-top: 1px solid #ddd;
+    }
+
     .details { overflow-wrap: anywhere; }
-    button { padding: 8px 12px; cursor: pointer; }
-    .delete { color: white; background: #c62828; border: 0; border-radius: 4px; }
+
+    button {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .delete {
+      color: white;
+      background: #c62828;
+      border: 0;
+      border-radius: 4px;
+    }
+
+    button:disabled { opacity: 0.6; cursor: wait; }
     #status { min-height: 1.5em; }
-    @media (max-width: 500px) { .row { align-items: flex-start; flex-direction: column; } }
+
+    @media (max-width: 500px) {
+      .row { align-items: flex-start; flex-direction: column; }
+    }
   </style>
 </head>
 <body>
   <h1>Manage Job Listings</h1>
-
-  <form id="login-form">
-    <h2>Manager sign-in</h2>
-    <label>Email <input id="email" type="email" autocomplete="username" required></label>
-    <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
-    <button type="submit">Sign in</button>
-    <button id="signout" type="button" hidden>Sign out</button>
-  </form>
-
-  <p id="status" role="status" aria-live="polite"></p>
+  <p id="status" role="status" aria-live="polite">Loading listings…</p>
   <div id="listings"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -34,19 +55,12 @@
     const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const form = document.getElementById("login-form");
     const status = document.getElementById("status");
     const listingsContainer = document.getElementById("listings");
-    const signoutButton = document.getElementById("signout");
-
-    async function hasSession() {
-      const { data, error } = await db.auth.getSession();
-      if (error) throw error;
-      return Boolean(data.session);
-    }
 
     async function loadListings() {
-      listingsContainer.textContent = "Loading listings…";
+      status.textContent = "Loading listings…";
+      listingsContainer.replaceChildren();
 
       const { data, error } = await db
         .from("job_listings")
@@ -54,17 +68,16 @@
         .order("created_at", { ascending: false });
 
       if (error) {
-        listingsContainer.textContent = "Could not load listings: " + error.message;
+        status.textContent = "Could not load listings: " + error.message;
         return;
       }
 
-      listingsContainer.replaceChildren();
-      if (!data?.length) {
-        listingsContainer.textContent = "No saved listings found.";
+      if (!data || data.length === 0) {
+        status.textContent = "No saved listings found.";
         return;
       }
 
-      const managerSignedIn = await hasSession();
+      status.textContent = "";
 
       for (const item of data) {
         const row = document.createElement("div");
@@ -72,78 +85,55 @@
 
         const details = document.createElement("div");
         details.className = "details";
+
         const title = document.createElement("strong");
         title.textContent = item.job || "Untitled job";
+
         const location = document.createElement("div");
         location.textContent =
           [item.address, item.region, item.country].filter(Boolean).join(", ");
+
         details.append(title, location);
-        row.appendChild(details);
 
-        if (managerSignedIn) {
-          const button = document.createElement("button");
-          button.className = "delete";
-          button.type = "button";
-          button.textContent = "Delete";
-          button.addEventListener("click", async () => {
-            if (!confirm(`Delete this listing: ${item.job || "Untitled job"}?`)) return;
+        const button = document.createElement("button");
+        button.className = "delete";
+        button.type = "button";
+        button.textContent = "Delete";
 
-            button.disabled = true;
-            const { error: deleteError } = await db
-              .from("job_listings")
-              .delete()
-              .eq("id", item.id);
+        button.addEventListener("click", async () => {
+          if (!confirm(`Delete this listing: ${item.job || "Untitled job"}?`)) {
+            return;
+          }
 
-            if (deleteError) {
-              status.textContent = "Could not delete listing: " + deleteError.message;
-              button.disabled = false;
-              return;
-            }
+          button.disabled = true;
 
-            status.textContent = "Listing deleted.";
-            await loadListings();
-          });
-          row.appendChild(button);
-        }
+          const { data: deleted, error: deleteError } = await db
+            .from("job_listings")
+            .delete()
+            .eq("id", item.id)
+            .select("id");
 
+          if (deleteError) {
+            status.textContent = "Could not delete listing: " + deleteError.message;
+            button.disabled = false;
+            return;
+          }
+
+          if (!deleted || deleted.length === 0) {
+            status.textContent =
+              "No listing was deleted. Check your table ID and Supabase delete policy.";
+            button.disabled = false;
+            return;
+          }
+
+          status.textContent = "Listing deleted.";
+          await loadListings();
+        });
+
+        row.append(details, button);
         listingsContainer.appendChild(row);
       }
-
-      if (!managerSignedIn) {
-        status.textContent = "Sign in as an authorized manager to delete listings.";
-      }
     }
-
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      status.textContent = "Signing in…";
-
-      const { error } = await db.auth.signInWithPassword({
-        email: document.getElementById("email").value,
-        password: document.getElementById("password").value
-      });
-
-      if (error) {
-        status.textContent = "Sign-in failed: " + error.message;
-        return;
-      }
-
-      status.textContent = "Signed in.";
-      signoutButton.hidden = false;
-      await loadListings();
-    });
-
-    signoutButton.addEventListener("click", async () => {
-      const { error } = await db.auth.signOut();
-      status.textContent = error ? "Sign-out failed: " + error.message : "Signed out.";
-      signoutButton.hidden = true;
-      await loadListings();
-    });
-
-    db.auth.onAuthStateChange((_event, session) => {
-      signoutButton.hidden = !session;
-      loadListings();
-    });
 
     loadListings();
   </script>
