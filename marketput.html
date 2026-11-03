@@ -33,7 +33,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-    const SUPABASE_KEY = "REPLACE_WITH_YOUR_NEW_PUBLISHABLE_KEY";
+    const SUPABASE_KEY = "PASTE_NEW_PUBLISHABLE_KEY_HERE";
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const PIN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
@@ -79,7 +79,7 @@
 
       if (error) {
         console.error(error);
-        alert("Could not load pins. Check that your Supabase table is set up.");
+        alert("Could not load pins. Check the Supabase key, table, and permissions.");
         return;
       }
 
@@ -144,7 +144,7 @@
 
           if (error) {
             console.error(error);
-            alert("Could not save the pin. Check your Supabase table settings.");
+            alert("Could not save the pin. Check the Supabase table and permissions.");
             return;
           }
 
