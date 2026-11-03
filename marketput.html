@@ -2,68 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Advertise Your Product</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
-    body {
-      margin: 0;
-      padding: 24px;
-      font-family: Arial, sans-serif;
-      color: #222;
-    }
-
-    #map {
-      height: 65vh;
-      min-height: 400px;
-      margin-top: 20px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-
-    .hint {
-      color: #555;
-    }
-
-    .pin-form label {
-      display: block;
-      margin: 10px 0 4px;
-    }
-
-    .pin-form input,
-    .pin-form textarea {
-      box-sizing: border-box;
-      width: 100%;
-    }
-
-    .pin-form textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    .pin-form button {
-      margin-top: 12px;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-
-    .pin-photo {
-      display: block;
-      max-width: 220px;
-      max-height: 150px;
-      margin-top: 8px;
-      object-fit: cover;
-    }
-
-    .pin-info {
-      max-width: 240px;
-      overflow-wrap: anywhere;
-    }
+    body { margin: 0; padding: 24px; font-family: Arial, sans-serif; color: #222; }
+    #map { height: 65vh; min-height: 400px; margin-top: 20px; border: 1px solid #ccc; border-radius: 8px; }
+    .hint { color: #555; }
+    .pin-form label { display: block; margin: 10px 0 4px; }
+    .pin-form input, .pin-form textarea { box-sizing: border-box; width: 100%; }
+    .pin-form textarea { min-height: 80px; resize: vertical; }
+    .pin-form button { margin-top: 12px; padding: 8px 12px; cursor: pointer; }
+    .pin-photo { display: block; max-width: 220px; max-height: 150px; margin-top: 8px; object-fit: cover; }
+    .pin-info { max-width: 240px; overflow-wrap: anywhere; }
   </style>
 </head>
 
@@ -74,86 +27,74 @@
     Pins expire one month after they are created.
   </p>
   <a href="marketplace.html">Back to Marketplace</a>
-
   <div id="map" aria-label="World map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const STORAGE_KEY = "productMapPins";
-    const PIN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
+    const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    const PIN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
     const map = L.map("map").setView([20, 0], 2);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    function getPins() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        return Array.isArray(saved) ? saved : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function savePins(pins) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
-    }
-
-    // Keep pins that are less than 30 days old.
-    function removeExpiredPins() {
-      const now = Date.now();
-      const activePins = getPins().filter(pin =>
-        Number.isFinite(pin.createdAt) &&
-        now - pin.createdAt < PIN_LIFETIME_MS
-      );
-
-      savePins(activePins);
-      return activePins;
-    }
-
     function showPin(pin) {
-      const marker = L.marker([pin.lat, pin.lng]).addTo(map);
-      const content = document.createElement("div");
-      content.className = "pin-info";
+      const marker = L.marker([Number(pin.lat), Number(pin.lng)]).addTo(map);
+      const info = document.createElement("div");
+      info.className = "pin-info";
 
       const title = document.createElement("strong");
       title.textContent = pin.title || "Product";
-      content.appendChild(title);
+      info.appendChild(title);
 
-      if (pin.text) {
+      if (pin.description) {
         const description = document.createElement("p");
-        description.textContent = pin.text;
-        content.appendChild(description);
+        description.textContent = pin.description;
+        info.appendChild(description);
       }
 
-      if (pin.photo) {
+      if (pin.photo_url) {
         const image = document.createElement("img");
-        image.src = pin.photo;
+        image.src = pin.photo_url;
         image.alt = pin.title ? `Photo of ${pin.title}` : "Product photo";
         image.className = "pin-photo";
-        content.appendChild(image);
+        info.appendChild(image);
       }
 
-      marker.bindPopup(content);
+      marker.bindPopup(info);
     }
 
-    // Remove expired pins before displaying the remaining ones.
-    removeExpiredPins().forEach(showPin);
+    async function loadPins() {
+      const cutoff = new Date(Date.now() - PIN_LIFETIME_MS).toISOString();
+      const { data, error } = await db
+        .from("product_pins")
+        .select("lat,lng,title,description,photo_url,created_at")
+        .gte("created_at", cutoff);
+
+      if (error) {
+        console.error(error);
+        alert("Could not load pins. Check that your Supabase table is set up.");
+        return;
+      }
+
+      data.forEach(showPin);
+    }
 
     map.on("click", (event) => {
       const form = document.createElement("form");
       form.className = "pin-form";
-
       form.innerHTML = `
         <label for="pin-title">Product or business name</label>
         <input id="pin-title" name="title" maxlength="80" required>
 
-        <label for="pin-text">Information</label>
-        <textarea id="pin-text" name="text" maxlength="500"></textarea>
+        <label for="pin-description">Information</label>
+        <textarea id="pin-description" name="description" maxlength="500"></textarea>
 
         <label for="pin-photo">Photo (optional)</label>
         <input id="pin-photo" name="photo" type="file" accept="image/*">
@@ -170,38 +111,16 @@
         submitEvent.preventDefault();
 
         const title = form.elements.title.value.trim();
-        const text = form.elements.text.value.trim();
+        const description = form.elements.description.value.trim();
         const file = form.elements.photo.files[0];
 
-        function savePin(photoData = "") {
-          const pin = {
-            lat: event.latlng.lat,
-            lng: event.latlng.lng,
-            title,
-            text,
-            photo: photoData,
-            createdAt: Date.now()
-          };
-
-          const pins = removeExpiredPins();
-          pins.push(pin);
-
-          try {
-            savePins(pins);
-            map.closePopup(popup);
-            showPin(pin);
-          } catch {
-            alert("Could not save the pin. Try using a smaller photo.");
-          }
-        }
-
-        if (!file) {
-          savePin();
+        if (file && file.size > 1_000_000) {
+          alert("Please choose a photo smaller than 1 MB.");
           return;
         }
 
-        if (file.size > 1_000_000) {
-          alert("Please choose a photo smaller than 1 MB.");
+        if (!file) {
+          savePin("");
           return;
         }
 
@@ -209,8 +128,33 @@
         reader.onload = () => savePin(reader.result);
         reader.onerror = () => alert("Could not read that photo.");
         reader.readAsDataURL(file);
+
+        async function savePin(photo_url) {
+          const { data, error } = await db
+            .from("product_pins")
+            .insert({
+              lat: event.latlng.lat,
+              lng: event.latlng.lng,
+              title,
+              description,
+              photo_url
+            })
+            .select("lat,lng,title,description,photo_url,created_at")
+            .single();
+
+          if (error) {
+            console.error(error);
+            alert("Could not save the pin. Check your Supabase table settings.");
+            return;
+          }
+
+          map.closePopup(popup);
+          showPin(data);
+        }
       });
     });
+
+    loadPins();
   </script>
 </body>
 </html>
