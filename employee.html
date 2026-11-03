@@ -1,209 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Workspace - Postgraduate Careers</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-            color: #333;
-        }
-
-        .job-group,
-        .country-group,
-        .region-group,
-        .listing {
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-
-        .job-group {
-            background: #f7f9fc;
-        }
-
-        .country-group {
-            margin-left: 12px;
-            background: #fff;
-        }
-
-        .region-group {
-            margin-left: 12px;
-            background: #fafafa;
-        }
-
-        .listing {
-            margin-left: 12px;
-        }
-
-        .job-group > h2 {
-            margin-top: 0;
-        }
-
-        .listing p {
-            margin: 8px 0;
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-        }
-
-        .empty {
-            color: #666;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Available Jobs</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; }
+    .job-group, .country-group, .region-group, .listing { padding: 20px; margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; }
+    .job-group { background: #f7f9fc; }
+    .country-group, .region-group, .listing { margin-left: 12px; }
+    .country-group { background: #fff; }
+    .region-group { background: #fafafa; }
+    .listing p { margin: 8px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .empty { color: #666; }
+  </style>
 </head>
 <body>
-    <h1>Employee Workspace</h1>
-    <h2>Available jobs — Alphabetical Groups</h2>
-    <div id="listings"></div>
+  <h1>Employee Workspace</h1>
+  <h2>Available jobs — alphabetical groups</h2>
+  <div id="listings" aria-live="polite">Loading listings…</div>
 
-    <script>
-        const STORAGE_KEY = "employerJobListings";
-        const listingsContainer = document.getElementById("listings");
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const listingsContainer = document.getElementById("listings");
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-        function compareText(a, b) {
-            return a.localeCompare(b, undefined, {
-                sensitivity: "base",
-                numeric: true
-            });
-        }
+    function compareText(a, b) {
+      return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+    }
 
-        function getListings() {
-            try {
-                const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-                return Array.isArray(data) ? data : [];
-            } catch {
-                return [];
-            }
-        }
+    function makeGroup(title, className, headingTag = "h3") {
+      const section = document.createElement("section");
+      section.className = className;
+      const heading = document.createElement(headingTag);
+      heading.textContent = title;
+      section.appendChild(heading);
+      return section;
+    }
 
-        function makeGroup(title, className, headingTag = "h3") {
-            const group = document.createElement("section");
-            group.className = className;
+    function addDetail(container, label, value) {
+      const p = document.createElement("p");
+      const strong = document.createElement("strong");
+      strong.textContent = `${label}: `;
+      p.append(strong, document.createTextNode(value || "Not provided"));
+      container.appendChild(p);
+    }
 
-            const heading = document.createElement(headingTag);
-            heading.textContent = title;
-            group.appendChild(heading);
+    async function renderListings() {
+      listingsContainer.textContent = "Loading listings…";
 
-            return group;
-        }
+      const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+      const { data, error } = await db
+        .from("job_listings")
+        .select("job,country,region,address,telephone,income,work_hours,description,created_at")
+        .gte("created_at", cutoff);
 
-        function addListingDetail(container, label, value) {
-            const paragraph = document.createElement("p");
-            const strong = document.createElement("strong");
+      if (error) {
+        listingsContainer.textContent = "Could not load listings: " + error.message;
+        return;
+      }
 
-            strong.textContent = `${label}: `;
-            paragraph.appendChild(strong);
-            paragraph.appendChild(
-                document.createTextNode(value || "Not provided")
+      const listings = data || [];
+      listingsContainer.replaceChildren();
+
+      if (!listings.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No current job listings are available.";
+        listingsContainer.appendChild(empty);
+        return;
+      }
+
+      const jobs = new Map();
+      for (const item of listings) {
+        const job = item.job || "Unspecified job";
+        const country = item.country || "Unspecified country";
+        const region = item.region || "Unspecified region";
+
+        if (!jobs.has(job)) jobs.set(job, new Map());
+        const countries = jobs.get(job);
+        if (!countries.has(country)) countries.set(country, new Map());
+        const regions = countries.get(country);
+        if (!regions.has(region)) regions.set(region, []);
+        regions.get(region).push(item);
+      }
+
+      for (const job of [...jobs.keys()].sort(compareText)) {
+        const jobSection = makeGroup(job, "job-group", "h2");
+        const countries = jobs.get(job);
+
+        for (const country of [...countries.keys()].sort(compareText)) {
+          const countrySection = makeGroup(country, "country-group");
+          const regions = countries.get(country);
+
+          for (const region of [...regions.keys()].sort(compareText)) {
+            const regionSection = makeGroup(region, "region-group");
+
+            const sorted = regions.get(region).sort((a, b) =>
+              compareText(a.address || "", b.address || "")
             );
 
-            container.appendChild(paragraph);
-        }
-
-        function renderListings() {
-            const listings = getListings();
-            listingsContainer.replaceChildren();
-
-            if (listings.length === 0) {
-                const empty = document.createElement("p");
-                empty.className = "empty";
-                empty.textContent = "No job listings are available yet.";
-                listingsContainer.appendChild(empty);
-                return;
+            for (const item of sorted) {
+              const article = document.createElement("article");
+              article.className = "listing";
+              addDetail(article, "Address", item.address);
+              addDetail(article, "Telephone", item.telephone);
+              addDetail(article, "Income / Salary", item.income);
+              addDetail(article, "Work hours / schedule", item.work_hours);
+              addDetail(article, "Description", item.description);
+              regionSection.appendChild(article);
             }
 
-            const jobGroups = new Map();
-
-            listings.forEach(listing => {
-                const job = listing.job || "Unspecified job";
-                const country = listing.country || "Unspecified country";
-                const region = listing.region || "Unspecified region";
-
-                if (!jobGroups.has(job)) {
-                    jobGroups.set(job, new Map());
-                }
-
-                const countryGroups = jobGroups.get(job);
-
-                if (!countryGroups.has(country)) {
-                    countryGroups.set(country, new Map());
-                }
-
-                const regionGroups = countryGroups.get(country);
-
-                if (!regionGroups.has(region)) {
-                    regionGroups.set(region, []);
-                }
-
-                regionGroups.get(region).push(listing);
-            });
-
-            [...jobGroups.keys()].sort(compareText).forEach(job => {
-                const jobSection = makeGroup(job, "job-group", "h2");
-                const countryGroups = jobGroups.get(job);
-
-                [...countryGroups.keys()].sort(compareText).forEach(country => {
-                    const countrySection = makeGroup(country, "country-group");
-                    const regionGroups = countryGroups.get(country);
-
-                    [...regionGroups.keys()].sort(compareText).forEach(region => {
-                        const regionSection = makeGroup(region, "region-group");
-
-                        const sortedListings = [...regionGroups.get(region)]
-                            .sort((a, b) =>
-                                compareText(a.address || "", b.address || "")
-                            );
-
-                        sortedListings.forEach(listing => {
-                            const article = document.createElement("article");
-                            article.className = "listing";
-
-                            addListingDetail(
-                                article,
-                                "Address",
-                                listing.address || "No address entered"
-                            );
-                            addListingDetail(
-                                article,
-                                "Contact telephone number",
-                                listing.telephone
-                            );
-                            addListingDetail(
-                                article,
-                                "Income / Salary",
-                                listing.income
-                            );
-                            addListingDetail(
-                                article,
-                                "Work hours / schedule",
-                                listing.workHours
-                            );
-                            addListingDetail(
-                                article,
-                                "Job description and other details",
-                                listing.description
-                            );
-
-                            regionSection.appendChild(article);
-                        });
-
-                        countrySection.appendChild(regionSection);
-                    });
-
-                    jobSection.appendChild(countrySection);
-                });
-
-                listingsContainer.appendChild(jobSection);
-            });
+            countrySection.appendChild(regionSection);
+          }
+          jobSection.appendChild(countrySection);
         }
+        listingsContainer.appendChild(jobSection);
+      }
+    }
 
-        renderListings();
-    </script>
+    renderListings();
+  </script>
 </body>
 </html>
