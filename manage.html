@@ -12,7 +12,6 @@
       padding: 0 20px;
       color: #333;
     }
-
     .row {
       display: flex;
       justify-content: space-between;
@@ -21,24 +20,16 @@
       padding: 14px 0;
       border-top: 1px solid #ddd;
     }
-
     .details { overflow-wrap: anywhere; }
-
-    button {
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-
+    button { padding: 8px 12px; cursor: pointer; }
     .delete {
       color: white;
       background: #c62828;
       border: 0;
       border-radius: 4px;
     }
-
     button:disabled { opacity: 0.6; cursor: wait; }
     #status { min-height: 1.5em; }
-
     @media (max-width: 500px) {
       .row { align-items: flex-start; flex-direction: column; }
     }
@@ -121,7 +112,7 @@
 
           if (!deleted || deleted.length === 0) {
             status.textContent =
-              "No listing was deleted. Check your table ID and Supabase delete policy.";
+              "No listing was deleted. Check the table's id column and Supabase DELETE policy.";
             button.disabled = false;
             return;
           }
