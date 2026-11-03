@@ -31,9 +31,7 @@
       border-top: 1px solid #ddd;
     }
 
-    .pin-details {
-      overflow-wrap: anywhere;
-    }
+    .pin-details { overflow-wrap: anywhere; }
 
     .pin-details p {
       margin: 5px 0;
@@ -58,13 +56,9 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #b02a37;
-    }
-
-    #status {
-      min-height: 1.5em;
-    }
+    button:hover { background: #b02a37; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    #status { min-height: 1.5em; }
 
     @media (max-width: 500px) {
       .pin-row {
@@ -78,43 +72,42 @@
 <body>
   <main>
     <h1>Manage Map Pins</h1>
-    <p>Pins saved by this browser are listed below.</p>
-    <p id="status" aria-live="polite"></p>
+    <p id="status" role="status" aria-live="polite">Loading pins…</p>
     <div id="pins"></div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
-    const STORAGE_KEY = "productMapPins";
+    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_PC2kgqtEQd_G0yoQhdLsLQ_EnzzRZsC";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     const pinsContainer = document.getElementById("pins");
     const status = document.getElementById("status");
 
-    function readPins() {
-      try {
-        const pins = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        return Array.isArray(pins) ? pins : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function loadPins() {
+    async function loadPins() {
+      status.textContent = "Loading pins…";
       pinsContainer.replaceChildren();
 
-      let pins;
+      const { data, error } = await db
+        .from("product_pins")
+        .select("id,lat,lng,title,description,photo_url,created_at")
+        .order("created_at", { ascending: false });
 
-      try {
-        pins = readPins();
-      } catch (error) {
-        status.textContent = "Could not access browser storage: " + error.message;
+      if (error) {
+        status.textContent = "Could not load pins: " + error.message;
         return;
       }
 
-      if (pins.length === 0) {
-        pinsContainer.textContent = "No saved pins found in this browser.";
+      if (!data || data.length === 0) {
+        status.textContent = "No saved pins found.";
         return;
       }
 
-      pins.forEach((pin, index) => {
+      status.textContent = "";
+
+      for (const pin of data) {
         const row = document.createElement("div");
         row.className = "pin-row";
 
@@ -126,17 +119,20 @@
         details.appendChild(title);
 
         const description = document.createElement("p");
-        description.textContent = pin.text || "No additional information.";
+        description.textContent = pin.description || "No additional information.";
         details.appendChild(description);
 
+        const lat = Number(pin.lat);
+        const lng = Number(pin.lng);
         const location = document.createElement("p");
-        location.textContent =
-          `Location: ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}`;
+        location.textContent = Number.isFinite(lat) && Number.isFinite(lng)
+          ? `Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          : "Location unavailable";
         details.appendChild(location);
 
-        if (pin.photo) {
+        if (pin.photo_url) {
           const image = document.createElement("img");
-          image.src = pin.photo;
+          image.src = pin.photo_url;
           image.alt = pin.title ? `Photo of ${pin.title}` : "Pin photo";
           image.className = "pin-photo";
           details.appendChild(image);
@@ -146,29 +142,39 @@
         deleteButton.type = "button";
         deleteButton.textContent = "Delete pin";
 
-        deleteButton.addEventListener("click", () => {
-          const currentPins = readPins();
-
-          if (index >= currentPins.length) {
-            status.textContent = "Pin not found. The list has been refreshed.";
-            loadPins();
+        deleteButton.addEventListener("click", async () => {
+          if (!confirm(`Delete the pin "${pin.title || "Untitled pin"}"?`)) {
             return;
           }
 
-          currentPins.splice(index, 1);
+          deleteButton.disabled = true;
 
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentPins));
-            status.textContent = "Pin deleted.";
-            loadPins();
-          } catch (error) {
-            status.textContent = "Could not delete the pin: " + error.message;
+          const { data: deleted, error: deleteError } = await db
+            .from("product_pins")
+            .delete()
+            .eq("id", pin.id)
+            .select("id");
+
+          if (deleteError) {
+            status.textContent = "Could not delete pin: " + deleteError.message;
+            deleteButton.disabled = false;
+            return;
           }
+
+          if (!deleted || deleted.length === 0) {
+            status.textContent =
+              "No pin was deleted. Check the table's id column and Supabase DELETE policy.";
+            deleteButton.disabled = false;
+            return;
+          }
+
+          status.textContent = "Pin deleted.";
+          await loadPins();
         });
 
         row.append(details, deleteButton);
         pinsContainer.appendChild(row);
-      });
+      }
     }
 
     loadPins();
