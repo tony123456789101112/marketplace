@@ -28,7 +28,11 @@
       box-sizing: border-box;
     }
 
-    h2 { margin: 0 0 25px; text-align: center; color: #222; }
+    h2 {
+      margin: 0 0 25px;
+      text-align: center;
+      color: #222;
+    }
 
     .input-box {
       width: 100%;
@@ -72,6 +76,7 @@
       margin-top: 15px;
       font-size: 14px;
       text-align: center;
+      overflow-wrap: anywhere;
     }
   </style>
 </head>
@@ -97,11 +102,12 @@
         class="input-box"
         placeholder="Password"
         autocomplete="current-password"
-        minlength="6"
         required
       >
 
-      <button id="primary-btn" class="action-btn" type="submit">Sign In</button>
+      <button id="primary-btn" class="action-btn" type="submit">
+        Sign In
+      </button>
     </form>
 
     <div id="toggle-text" class="toggle-link" role="button" tabindex="0">
@@ -114,7 +120,7 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Replace these with your Supabase project values.
+    // Replace with your values from Supabase → Project Settings → API.
     const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
     const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
 
@@ -130,7 +136,8 @@
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
 
-    // Demo username-to-email mapping. For a real site, use users' actual email addresses.
+    // Demo only: username is mapped to a placeholder email.
+    // Use real email addresses for a production site.
     function usernameToEmail(username) {
       return `${username.trim().toLowerCase()}@users.example.com`;
     }
@@ -151,7 +158,8 @@
         toggleText.textContent = "Already have an account? Sign in";
         passwordInput.autocomplete = "new-password";
       } else {
-        title.textContent = "Find jobs, opportunities, and products. Sign in to get started!";
+        title.textContent =
+          "Find jobs, opportunities, and products. Sign in to get started!";
         button.textContent = "Sign In";
         button.className = "action-btn";
         toggleText.textContent = "Don't have an account? Create new user";
@@ -165,8 +173,8 @@
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
 
-      if (!username || !password.trim()) {
-        showMessage("Enter both a username and password.", "red");
+      if (!username || password.length === 0) {
+        showMessage("Enter a username and password.", "red");
         return;
       }
 
@@ -180,27 +188,43 @@
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { username } }
+            options: {
+              data: { username }
+            }
           });
 
           if (error) throw error;
 
-          // This insert works when email confirmation is disabled and a session is returned.
-          if (data.user && data.session) {
-            const { error: profileError } = await supabase
-              .from("profiles")
-              .insert({ id: data.user.id, username });
+          if (!data.user) {
+            throw new Error("No user was returned. Check your Supabase Auth settings.");
+          }
 
-            if (profileError) throw profileError;
-          } else {
+          // This browser-side profile insert requires a session.
+          // Disable email confirmation for this demo flow.
+          if (!data.session) {
             showMessage(
-              "Account created. If email confirmation is enabled, confirm the account before signing in.",
-              "green"
+              "Account created, but email confirmation is enabled. Disable confirmation in Supabase or use a real email address.",
+              "red"
             );
             return;
           }
 
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .insert({
+              id: data.user.id,
+              username: username
+            });
+
+          if (profileError) {
+            throw new Error(
+              "Account created, but profile saving failed: " +
+              profileError.message
+            );
+          }
+
           showMessage("Account created. You can now sign in.", "green");
+
           setTimeout(() => {
             if (isRegisterMode) toggleMode();
           }, 1200);
@@ -213,6 +237,7 @@
           if (error) throw error;
 
           showMessage("Login successful. Redirecting…", "green");
+
           setTimeout(() => {
             window.location.href = "users.html";
           }, 500);
@@ -225,6 +250,7 @@
     });
 
     toggleText.addEventListener("click", toggleMode);
+
     toggleText.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
