@@ -2,13 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Browse Physical Shops</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
     body {
@@ -26,9 +24,7 @@
       border-radius: 8px;
     }
 
-    .hint {
-      color: #555;
-    }
+    .hint { color: #555; }
 
     .pin-photo {
       display: block;
@@ -50,11 +46,19 @@
   <p class="hint">Click a pin to view shop information. This map is read-only.</p>
   <a href="marketplace.html">Back to Marketplace</a>
 
+  <p id="status" role="status" aria-live="polite">Loading pins…</p>
   <div id="map" aria-label="Read-only map of physical shops"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
-    const STORAGE_KEY = "productMapPins";
+    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_PC2kgqtEQd_G0yoQhdLsLQ_EnzzRZsC";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const PIN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+    const status = document.getElementById("status");
 
     const map = L.map("map").setView([20, 0], 2);
 
@@ -64,29 +68,13 @@
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    // Prevent clicking the map from creating pins or opening an add form.
-    map.on("click", (event) => {
-      // Intentionally read-only.
-    });
-
-    function getPins() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        return Array.isArray(saved) ? saved : [];
-      } catch {
-        return [];
-      }
-    }
-
     function showPin(pin) {
-      if (
-        typeof pin.lat !== "number" ||
-        typeof pin.lng !== "number"
-      ) {
-        return;
-      }
+      const lat = Number(pin.lat);
+      const lng = Number(pin.lng);
 
-      const marker = L.marker([pin.lat, pin.lng]).addTo(map);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const marker = L.marker([lat, lng]).addTo(map);
       const content = document.createElement("div");
       content.className = "pin-info";
 
@@ -94,15 +82,15 @@
       title.textContent = pin.title || "Shop";
       content.appendChild(title);
 
-      if (pin.text) {
+      if (pin.description) {
         const description = document.createElement("p");
-        description.textContent = pin.text;
+        description.textContent = pin.description;
         content.appendChild(description);
       }
 
-      if (pin.photo) {
+      if (pin.photo_url) {
         const image = document.createElement("img");
-        image.src = pin.photo;
+        image.src = pin.photo_url;
         image.alt = pin.title ? `Photo of ${pin.title}` : "Shop photo";
         image.className = "pin-photo";
         content.appendChild(image);
@@ -111,8 +99,27 @@
       marker.bindPopup(content);
     }
 
-    // Display saved pins; clicking a marker reveals its information.
-    getPins().forEach(showPin);
+    async function loadPins() {
+      const cutoff = new Date(Date.now() - PIN_LIFETIME_MS).toISOString();
+
+      const { data, error } = await db
+        .from("product_pins")
+        .select("lat,lng,title,description,photo_url,created_at")
+        .gte("created_at", cutoff);
+
+      if (error) {
+        console.error(error);
+        status.textContent = "Could not load pins: " + error.message;
+        return;
+      }
+
+      (data || []).forEach(showPin);
+      status.textContent = data?.length
+        ? `${data.length} pin(s) loaded.`
+        : "No current pins found.";
+    }
+
+    loadPins();
   </script>
 </body>
 </html>
