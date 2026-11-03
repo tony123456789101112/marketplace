@@ -1,123 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manage Registered Users</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 30px 20px;
-            color: #333;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registered Users</title>
 
-        main {
-            max-width: 700px;
-            margin: auto;
-            padding: 25px;
-            background: white;
-            border-radius: 8px;
-        }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 30px 20px;
+      color: #333;
+    }
 
-        .user-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-top: 1px solid #ddd;
-        }
+    main {
+      max-width: 700px;
+      margin: auto;
+      padding: 25px;
+      background: white;
+      border-radius: 8px;
+    }
 
-        button {
-            padding: 9px 13px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .user-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid #ddd;
+    }
 
-        #status { min-height: 1.5em; }
-    </style>
+    button {
+      padding: 9px 13px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    #status { min-height: 1.5em; }
+  </style>
 </head>
 <body>
-<main>
+  <main>
     <h1>Registered Users</h1>
-    <p>Users saved by this browser’s login page appear below.</p>
-    <p id="status" aria-live="polite"></p>
+    <p>Registered usernames stored in Supabase:</p>
+    <p id="status" aria-live="polite">Loading…</p>
     <div id="users"></div>
-</main>
+    <button id="sign-out" type="button">Sign out</button>
+  </main>
 
-<script>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // Use the same project values as index.html.
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
     const usersContainer = document.getElementById("users");
     const status = document.getElementById("status");
 
-    function loadUsers() {
-        usersContainer.replaceChildren();
+    async function loadUsers() {
+      usersContainer.replaceChildren();
 
-        try {
-            const accounts = [];
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith("user_profile_")) {
-                    accounts.push(key.substring("user_profile_".length));
-                }
-            }
+      if (authError || !user) {
+        status.textContent = "Please sign in first.";
+        return;
+      }
 
-            if (accounts.length === 0) {
-                usersContainer.textContent =
-                    "No registered users found. Register an account first using login.html.";
-                return;
-            }
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .order("username");
 
-            accounts.sort().forEach((username) => {
-                const row = document.createElement("div");
-                row.className = "user-row";
+      if (error) {
+        status.textContent = `Could not load users: ${error.message}`;
+        return;
+      }
 
-                const label = document.createElement("span");
-                label.textContent = username;
+      status.textContent = "";
 
-                const deleteButton = document.createElement("button");
-                deleteButton.type = "button";
-                deleteButton.textContent = "Delete account";
+      if (!profiles || profiles.length === 0) {
+        usersContainer.textContent = "No registered users found.";
+        return;
+      }
 
-                deleteButton.addEventListener("click", () => {
-                    const key = "user_profile_" + username;
+      for (const profile of profiles) {
+        const row = document.createElement("div");
+        row.className = "user-row";
 
-                    try {
-                        if (localStorage.getItem(key) === null) {
-                            status.textContent = "Account not found in this browser.";
-                            loadUsers();
-                            return;
-                        }
+        const label = document.createElement("span");
+        label.textContent = profile.username;
 
-                        localStorage.removeItem(key);
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent =
+          profile.id === user.id ? "Delete my profile" : "Cannot delete";
+        deleteButton.disabled = profile.id !== user.id;
 
-                        if (localStorage.getItem("currentUser") === username) {
-                            localStorage.removeItem("currentUser");
-                            localStorage.removeItem("isLoggedIn");
-                        }
+        deleteButton.addEventListener("click", async () => {
+          if (!confirm(`Delete your profile for ${profile.username}?`)) return;
 
-                        status.textContent = `Deleted account: ${username}`;
-                        loadUsers();
-                    } catch (error) {
-                        status.textContent =
-                            "Could not access browser storage: " + error.message;
-                    }
-                });
+          deleteButton.disabled = true;
 
-                row.append(label, deleteButton);
-                usersContainer.appendChild(row);
-            });
-        } catch (error) {
-            usersContainer.textContent =
-                "Could not read browser storage: " + error.message;
-        }
+          const { error: deleteError } = await supabase
+            .from("profiles")
+            .delete()
+            .eq("id", profile.id);
+
+          if (deleteError) {
+            status.textContent = `Could not delete profile: ${deleteError.message}`;
+            deleteButton.disabled = false;
+            return;
+          }
+
+          status.textContent = "Profile deleted.";
+          await loadUsers();
+        });
+
+        row.append(label, deleteButton);
+        usersContainer.appendChild(row);
+      }
     }
 
+    document.getElementById("sign-out").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "index.html";
+    });
+
     loadUsers();
-</script>
+  </script>
 </body>
 </html>
