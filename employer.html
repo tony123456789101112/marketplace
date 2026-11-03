@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Employer Workspace - Postgraduate Careers</title>
 
     <style>
@@ -46,8 +46,12 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            cursor: wait;
+            opacity: 0.6;
+        }
+
         .message {
-            color: #216e39;
             min-height: 1.4em;
         }
 
@@ -76,6 +80,7 @@
         .listing p {
             margin: 8px 0;
             overflow-wrap: anywhere;
+            white-space: pre-wrap;
         }
 
         .empty {
@@ -85,7 +90,7 @@
 </head>
 <body>
     <h1>Employer Workspace</h1>
-    <h2>Add a job listing which stored for a month</h2>
+    <h2>Add a job listing, available for 30 days</h2>
 
     <form id="job-form">
         <label for="job">Select a job</label>
@@ -124,19 +129,26 @@
         <textarea id="description" required
                   placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."></textarea>
 
-        <button type="submit">Save job listing</button>
-        <p id="message" class="message" role="status"></p>
+        <button id="submit-button" type="submit">Save job listing</button>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
     </form>
 
     <h2>Saved Listings — Alphabetical Groups</h2>
     <div id="listings"></div>
 
+    <!-- Supabase JavaScript library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
-        const STORAGE_KEY = "employerJobListings";
+        // Replace these with your Supabase Project URL and publishable/anon key.
+        // Never put a service_role key in a browser page.
+        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+        const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
+
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
         // Format: Full job title (qualification wording).
-        // Add or remove entries here to change the job dropdown.
         const JOBS = [
             "Abuse Counselor (Clinical) (Clinical Counseling / Psychology Master's)",
             "Academic Advisor (Higher Education / Counseling Master's)",
@@ -574,6 +586,7 @@
         const form = document.getElementById("job-form");
         const listingsContainer = document.getElementById("listings");
         const message = document.getElementById("message");
+        const submitButton = document.getElementById("submit-button");
 
         function compareText(a, b) {
             return a.localeCompare(b, undefined, {
@@ -591,9 +604,7 @@
             placeholder.textContent = "Choose a job";
             jobSelect.appendChild(placeholder);
 
-            const uniqueJobs = [...new Set(JOBS)].sort(compareText);
-
-            uniqueJobs.forEach(job => {
+            [...new Set(JOBS)].sort(compareText).forEach(job => {
                 const option = document.createElement("option");
                 option.value = job;
                 option.textContent = job;
@@ -628,11 +639,10 @@
                     option.textContent = country.name;
                     countrySelect.appendChild(option);
                 });
-            } catch {
+            } catch (error) {
                 countrySelect.innerHTML =
                     '<option value="">Country list unavailable</option>';
-                message.textContent =
-                    "Your browser could not create the country list.";
+                setMessage("Your browser could not create the country list.", true);
             }
         }
 
@@ -640,7 +650,7 @@
             regionSelect.disabled = true;
             regionSelect.innerHTML =
                 '<option value="">Loading regions…</option>';
-            message.textContent = "";
+            setMessage("");
 
             try {
                 const response = await fetch(
@@ -675,20 +685,21 @@
                 } else {
                     regionSelect.innerHTML =
                         '<option value="">No regions available</option>';
-                    message.textContent =
-                        "No regions were returned for this country.";
+                    setMessage("No regions were returned for this country.", true);
                 }
-            } catch {
+            } catch (error) {
                 regionSelect.innerHTML =
                     '<option value="">Could not load regions</option>';
                 regionSelect.disabled = true;
-                message.textContent =
-                    "Could not load regions. Check your internet connection and try again.";
+                setMessage(
+                    "Could not load regions. Check your internet connection and try again.",
+                    true
+                );
             }
         }
 
         countrySelect.addEventListener("change", () => {
-            message.textContent = "";
+            setMessage("");
 
             if (countrySelect.value) {
                 loadRegions(countrySelect.value);
@@ -698,40 +709,6 @@
                     '<option value="">Choose a country first</option>';
             }
         });
-
-        function getListings() {
-            try {
-                const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-                return Array.isArray(data) ? data : [];
-            } catch {
-                return [];
-            }
-        }
-
-        function getActiveListings() {
-            const now = Date.now();
-
-            // Keep only listings with a valid saved date that are less
-            // than 30 days old.
-            const activeListings = getListings().filter(listing => {
-                const savedAt = Number(listing.savedAt);
-
-                return Number.isFinite(savedAt) &&
-                    savedAt > 0 &&
-                    now - savedAt < THIRTY_DAYS_MS;
-            });
-
-            try {
-                localStorage.setItem(
-                    STORAGE_KEY,
-                    JSON.stringify(activeListings)
-                );
-            } catch {
-                // Continue displaying active listings if storage fails.
-            }
-
-            return activeListings;
-        }
 
         function makeGroup(title, className) {
             const group = document.createElement("section");
@@ -747,17 +724,49 @@
         function addListingDetail(container, label, value) {
             const paragraph = document.createElement("p");
             const strong = document.createElement("strong");
+
             strong.textContent = `${label}: `;
             paragraph.appendChild(strong);
             paragraph.appendChild(
                 document.createTextNode(value || "Not provided")
             );
+
             container.appendChild(paragraph);
         }
 
-        function renderListings() {
-            const listings = getActiveListings();
+        function setMessage(text, isError = false) {
+            message.textContent = text;
+            message.style.color = isError ? "#b42318" : "#216e39";
+        }
+
+        async function fetchActiveListings() {
+            const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+
+            const { data, error } = await db
+                .from("job_listings")
+                .select("*")
+                .gte("created_at", cutoff)
+                .order("job", { ascending: true });
+
+            if (error) {
+                throw error;
+            }
+
+            return data || [];
+        }
+
+        async function renderListings() {
             listingsContainer.replaceChildren();
+
+            let listings;
+
+            try {
+                listings = await fetchActiveListings();
+            } catch (error) {
+                listingsContainer.textContent =
+                    "Could not load listings: " + error.message;
+                return;
+            }
 
             if (listings.length === 0) {
                 const empty = document.createElement("p");
@@ -774,15 +783,21 @@
                 const country = listing.country || "Unspecified country";
                 const region = listing.region || "Unspecified region";
 
-                if (!jobGroups.has(job)) jobGroups.set(job, new Map());
+                if (!jobGroups.has(job)) {
+                    jobGroups.set(job, new Map());
+                }
 
                 const countryGroups = jobGroups.get(job);
+
                 if (!countryGroups.has(country)) {
                     countryGroups.set(country, new Map());
                 }
 
                 const regionGroups = countryGroups.get(country);
-                if (!regionGroups.has(region)) regionGroups.set(region, []);
+
+                if (!regionGroups.has(region)) {
+                    regionGroups.set(region, []);
+                }
 
                 regionGroups.get(region).push(listing);
             });
@@ -804,7 +819,7 @@
                             );
 
                         sortedListings.forEach(listing => {
-                            const listingElement = document.createElement("div");
+                            const listingElement = document.createElement("article");
                             listingElement.className = "listing";
 
                             addListingDetail(
@@ -825,7 +840,7 @@
                             addListingDetail(
                                 listingElement,
                                 "Work hours / schedule",
-                                listing.workHours
+                                listing.work_hours
                             );
                             addListingDetail(
                                 listingElement,
@@ -846,11 +861,15 @@
             });
         }
 
-        form.addEventListener("submit", event => {
+        form.addEventListener("submit", async event => {
             event.preventDefault();
-            if (!form.reportValidity()) return;
 
-            const listings = getActiveListings();
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            submitButton.disabled = true;
+            setMessage("Saving listing…");
 
             const listing = {
                 job: document.getElementById("job").value,
@@ -859,27 +878,30 @@
                 address: document.getElementById("address").value.trim(),
                 telephone: document.getElementById("telephone").value.trim(),
                 income: document.getElementById("income").value.trim(),
-                workHours: document.getElementById("work-hours").value.trim(),
-                description: document.getElementById("description").value.trim(),
-                savedAt: Date.now()
+                work_hours: document.getElementById("work-hours").value.trim(),
+                description: document.getElementById("description").value.trim()
             };
 
-            listings.push(listing);
-
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
+                const { error } = await db
+                    .from("job_listings")
+                    .insert(listing);
 
-                message.textContent =
-                    "Job listing saved. It will be removed after 30 days.";
+                if (error) {
+                    throw error;
+                }
+
                 form.reset();
                 regionSelect.disabled = true;
                 regionSelect.innerHTML =
                     '<option value="">Choose a country first</option>';
 
-                renderListings();
-            } catch {
-                message.textContent =
-                    "Could not save the listing in this browser.";
+                setMessage("Job listing saved. It will no longer be displayed after 30 days.");
+                await renderListings();
+            } catch (error) {
+                setMessage("Could not save the listing: " + error.message, true);
+            } finally {
+                submitButton.disabled = false;
             }
         });
 
