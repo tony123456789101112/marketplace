@@ -23,7 +23,7 @@
       padding: 40px 30px;
       border-radius: 8px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, .08);
-      width: 360px;
+      width: 340px;
       max-width: 100%;
       box-sizing: border-box;
     }
@@ -82,7 +82,9 @@
 </head>
 <body>
   <main class="form-card">
-    <h2 id="form-title">Sign in to get started</h2>
+    <h2 id="form-title">
+      Finding jobs with or without a degree worldwide? Sign in to find one!
+    </h2>
 
     <form id="auth-form">
       <input
@@ -95,15 +97,6 @@
       >
 
       <input
-        type="email"
-        id="email"
-        class="input-box"
-        placeholder="Email address"
-        autocomplete="email"
-        required
-      >
-
-      <input
         type="password"
         id="password"
         class="input-box"
@@ -112,7 +105,9 @@
         required
       >
 
-      <button id="primary-btn" class="action-btn" type="submit">Sign In</button>
+      <button id="primary-btn" class="action-btn" type="submit">
+        Sign In
+      </button>
     </form>
 
     <div id="toggle-text" class="toggle-link" role="button" tabindex="0">
@@ -123,11 +118,12 @@
   </main>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { createClient } from
+      "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Replace these with your actual Supabase Project URL and publishable key.
-    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
+    // Replace these with your actual values from Supabase → Project Settings → API.
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -139,12 +135,25 @@
     const toggleText = document.getElementById("toggle-text");
     const message = document.getElementById("status-display");
     const usernameInput = document.getElementById("username");
-    const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
 
     function showMessage(text, color) {
       message.textContent = text;
       message.style.color = color;
+    }
+
+    // Demo workaround: Supabase password auth requires an email.
+    // Use real email addresses for a production site.
+    function usernameToEmail(username) {
+      const cleanUsername = username.trim().toLowerCase();
+
+      if (!/^[a-z0-9._-]{3,30}$/.test(cleanUsername)) {
+        throw new Error(
+          "Username must be 3–30 characters: letters, numbers, dots, underscores, or hyphens."
+        );
+      }
+
+      return `${cleanUsername}@users.example.com`;
     }
 
     function toggleMode() {
@@ -158,7 +167,8 @@
         toggleText.textContent = "Already have an account? Sign in";
         passwordInput.autocomplete = "new-password";
       } else {
-        title.textContent = "Sign in to get started";
+        title.textContent =
+          "Finding jobs with or without a degree worldwide? Sign in to find one!";
         button.textContent = "Sign In";
         button.className = "action-btn";
         toggleText.textContent = "Don't have an account? Create new user";
@@ -170,11 +180,10 @@
       event.preventDefault();
 
       const username = usernameInput.value.trim();
-      const email = emailInput.value.trim();
       const password = passwordInput.value;
 
-      if (!username || !email || !password) {
-        showMessage("Please fill in all fields.", "red");
+      if (!username || !password) {
+        showMessage("Enter both a username and password.", "red");
         return;
       }
 
@@ -182,28 +191,36 @@
       showMessage("Please wait…", "#555");
 
       try {
+        const email = usernameToEmail(username);
+
         if (isRegisterMode) {
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { username } }
+            options: {
+              data: { username }
+            }
           });
 
           if (error) throw error;
-          if (!data.user) throw new Error("Signup returned no user.");
+
+          if (!data.user) {
+            throw new Error("Supabase did not return a user.");
+          }
 
           if (!data.session) {
             showMessage(
-              "Account created. Check your email to confirm it, then sign in.",
-              "green"
+              "Supabase requires email confirmation. This username-only demo uses a placeholder email, so switch off email confirmation in Supabase or use real email addresses.",
+              "red"
             );
-          } else {
-            showMessage("Account created. You can now sign in.", "green");
+            return;
           }
+
+          showMessage("Account created. You can now sign in.", "green");
 
           setTimeout(() => {
             if (isRegisterMode) toggleMode();
-          }, 1800);
+          }, 1200);
         } else {
           const { error } = await supabase.auth.signInWithPassword({
             email,
@@ -213,9 +230,10 @@
           if (error) throw error;
 
           showMessage("Login successful. Redirecting…", "green");
+
           setTimeout(() => {
-            window.location.href = "users.html";
-          }, 700);
+            window.location.href = "dashboard.html";
+          }, 500);
         }
       } catch (error) {
         showMessage(error.message || "Something went wrong.", "red");
