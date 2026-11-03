@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employer Workspace - Postgraduate Careers</title>
 
     <style>
@@ -52,6 +52,7 @@
         }
 
         .message {
+            color: #216e39;
             min-height: 1.4em;
         }
 
@@ -90,7 +91,7 @@
 </head>
 <body>
     <h1>Employer Workspace</h1>
-    <h2>Add a job listing, available for 30 days</h2>
+    <h2>Add a job listing which is stored for a month</h2>
 
     <form id="job-form">
         <label for="job">Select a job</label>
@@ -136,19 +137,20 @@
     <h2>Saved Listings — Alphabetical Groups</h2>
     <div id="listings"></div>
 
-    <!-- Supabase JavaScript library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // Replace these with your Supabase Project URL and publishable/anon key.
-        // Never put a service_role key in a browser page.
+        // Supabase settings.
         const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+
+        // LINE 94: Replace the text inside the quotes with your publishable/anon key.
         const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
         // Format: Full job title (qualification wording).
+        // The job list is retained from your original page.
         const JOBS = [
             "Abuse Counselor (Clinical) (Clinical Counseling / Psychology Master's)",
             "Academic Advisor (Higher Education / Counseling Master's)",
@@ -595,6 +597,11 @@
             });
         }
 
+        function setMessage(text, isError = false) {
+            message.textContent = text;
+            message.style.color = isError ? "#b42318" : "#216e39";
+        }
+
         function loadJobs() {
             const jobSelect = document.getElementById("job");
             jobSelect.replaceChildren();
@@ -734,11 +741,6 @@
             container.appendChild(paragraph);
         }
 
-        function setMessage(text, isError = false) {
-            message.textContent = text;
-            message.style.color = isError ? "#b42318" : "#216e39";
-        }
-
         async function fetchActiveListings() {
             const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
 
@@ -748,125 +750,113 @@
                 .gte("created_at", cutoff)
                 .order("job", { ascending: true });
 
-            if (error) {
-                throw error;
-            }
-
+            if (error) throw error;
             return data || [];
         }
 
         async function renderListings() {
             listingsContainer.replaceChildren();
 
-            let listings;
-
             try {
-                listings = await fetchActiveListings();
+                const listings = await fetchActiveListings();
+
+                if (listings.length === 0) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No current job listings saved.";
+                    listingsContainer.appendChild(empty);
+                    return;
+                }
+
+                const jobGroups = new Map();
+
+                listings.forEach(listing => {
+                    const job = listing.job || "Unspecified job";
+                    const country = listing.country || "Unspecified country";
+                    const region = listing.region || "Unspecified region";
+
+                    if (!jobGroups.has(job)) jobGroups.set(job, new Map());
+
+                    const countryGroups = jobGroups.get(job);
+                    if (!countryGroups.has(country)) {
+                        countryGroups.set(country, new Map());
+                    }
+
+                    const regionGroups = countryGroups.get(country);
+                    if (!regionGroups.has(region)) {
+                        regionGroups.set(region, []);
+                    }
+
+                    regionGroups.get(region).push(listing);
+                });
+
+                [...jobGroups.keys()].sort(compareText).forEach(job => {
+                    const jobSection = makeGroup(job, "job-group");
+                    const countryGroups = jobGroups.get(job);
+
+                    [...countryGroups.keys()].sort(compareText).forEach(country => {
+                        const countrySection = makeGroup(country, "country-group");
+                        const regionGroups = countryGroups.get(country);
+
+                        [...regionGroups.keys()].sort(compareText).forEach(region => {
+                            const regionSection = makeGroup(region, "region-group");
+
+                            const sortedListings = [...regionGroups.get(region)]
+                                .sort((a, b) =>
+                                    compareText(a.address || "", b.address || "")
+                                );
+
+                            sortedListings.forEach(listing => {
+                                const listingElement = document.createElement("div");
+                                listingElement.className = "listing";
+
+                                addListingDetail(
+                                    listingElement,
+                                    "Address",
+                                    listing.address || "No address entered"
+                                );
+                                addListingDetail(
+                                    listingElement,
+                                    "Contact telephone number",
+                                    listing.telephone
+                                );
+                                addListingDetail(
+                                    listingElement,
+                                    "Income / Salary",
+                                    listing.income
+                                );
+                                addListingDetail(
+                                    listingElement,
+                                    "Work hours / schedule",
+                                    listing.work_hours
+                                );
+                                addListingDetail(
+                                    listingElement,
+                                    "Job description and other details",
+                                    listing.description
+                                );
+
+                                regionSection.appendChild(listingElement);
+                            });
+
+                            countrySection.appendChild(regionSection);
+                        });
+
+                        jobSection.appendChild(countrySection);
+                    });
+
+                    listingsContainer.appendChild(jobSection);
+                });
             } catch (error) {
                 listingsContainer.textContent =
                     "Could not load listings: " + error.message;
-                return;
             }
-
-            if (listings.length === 0) {
-                const empty = document.createElement("p");
-                empty.className = "empty";
-                empty.textContent = "No current job listings saved.";
-                listingsContainer.appendChild(empty);
-                return;
-            }
-
-            const jobGroups = new Map();
-
-            listings.forEach(listing => {
-                const job = listing.job || "Unspecified job";
-                const country = listing.country || "Unspecified country";
-                const region = listing.region || "Unspecified region";
-
-                if (!jobGroups.has(job)) {
-                    jobGroups.set(job, new Map());
-                }
-
-                const countryGroups = jobGroups.get(job);
-
-                if (!countryGroups.has(country)) {
-                    countryGroups.set(country, new Map());
-                }
-
-                const regionGroups = countryGroups.get(country);
-
-                if (!regionGroups.has(region)) {
-                    regionGroups.set(region, []);
-                }
-
-                regionGroups.get(region).push(listing);
-            });
-
-            [...jobGroups.keys()].sort(compareText).forEach(job => {
-                const jobSection = makeGroup(job, "job-group");
-                const countryGroups = jobGroups.get(job);
-
-                [...countryGroups.keys()].sort(compareText).forEach(country => {
-                    const countrySection = makeGroup(country, "country-group");
-                    const regionGroups = countryGroups.get(country);
-
-                    [...regionGroups.keys()].sort(compareText).forEach(region => {
-                        const regionSection = makeGroup(region, "region-group");
-
-                        const sortedListings = [...regionGroups.get(region)]
-                            .sort((a, b) =>
-                                compareText(a.address || "", b.address || "")
-                            );
-
-                        sortedListings.forEach(listing => {
-                            const listingElement = document.createElement("article");
-                            listingElement.className = "listing";
-
-                            addListingDetail(
-                                listingElement,
-                                "Address",
-                                listing.address || "No address entered"
-                            );
-                            addListingDetail(
-                                listingElement,
-                                "Contact telephone number",
-                                listing.telephone
-                            );
-                            addListingDetail(
-                                listingElement,
-                                "Income / Salary",
-                                listing.income
-                            );
-                            addListingDetail(
-                                listingElement,
-                                "Work hours / schedule",
-                                listing.work_hours
-                            );
-                            addListingDetail(
-                                listingElement,
-                                "Job description and other details",
-                                listing.description
-                            );
-
-                            regionSection.appendChild(listingElement);
-                        });
-
-                        countrySection.appendChild(regionSection);
-                    });
-
-                    jobSection.appendChild(countrySection);
-                });
-
-                listingsContainer.appendChild(jobSection);
-            });
         }
 
         form.addEventListener("submit", async event => {
             event.preventDefault();
 
-            if (!form.reportValidity()) {
-                return;
-            }
+            if (!form.reportValidity()) return;
 
             submitButton.disabled = true;
             setMessage("Saving listing…");
@@ -887,19 +877,17 @@
                     .from("job_listings")
                     .insert(listing);
 
-                if (error) {
-                    throw error;
-                }
+                if (error) throw error;
 
                 form.reset();
                 regionSelect.disabled = true;
                 regionSelect.innerHTML =
                     '<option value="">Choose a country first</option>';
 
-                setMessage("Job listing saved. It will no longer be displayed after 30 days.");
+                setMessage("Job listing saved. It will no longer display after 30 days.");
                 await renderListings();
             } catch (error) {
-                setMessage("Could not save the listing: " + error.message, true);
+                setMessage("Could not save listing: " + error.message, true);
             } finally {
                 submitButton.disabled = false;
             }
