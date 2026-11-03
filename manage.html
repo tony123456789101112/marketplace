@@ -1,155 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manage Job Listings</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 30px 20px;
-            color: #333;
-        }
-
-        main {
-            max-width: 700px;
-            margin: auto;
-            padding: 25px;
-            background: white;
-            border-radius: 8px;
-        }
-
-        .listing-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            padding: 15px 0;
-            border-top: 1px solid #ddd;
-        }
-
-        .listing-details {
-            overflow-wrap: anywhere;
-        }
-
-        button {
-            flex-shrink: 0;
-            padding: 9px 13px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #b02a37;
-        }
-
-        #status {
-            min-height: 1.5em;
-        }
-
-        @media (max-width: 480px) {
-            .listing-row {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage Job Listings</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid #ddd; }
+    .details { overflow-wrap: anywhere; }
+    button { padding: 8px 12px; cursor: pointer; }
+    .delete { color: white; background: #c62828; border: 0; border-radius: 4px; }
+    #status { min-height: 1.5em; }
+    @media (max-width: 500px) { .row { align-items: flex-start; flex-direction: column; } }
+  </style>
 </head>
 <body>
-<main>
-    <h1>Manage Job Listings</h1>
-    <p>Listings saved by this browser appear below.</p>
-    <p id="status" aria-live="polite"></p>
-    <div id="listings"></div>
-</main>
+  <h1>Manage Job Listings</h1>
 
-<script>
-    const STORAGE_KEY = "employerJobListings";
-    const listingsContainer = document.getElementById("listings");
+  <form id="login-form">
+    <h2>Manager sign-in</h2>
+    <label>Email <input id="email" type="email" autocomplete="username" required></label>
+    <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Sign in</button>
+    <button id="signout" type="button" hidden>Sign out</button>
+  </form>
+
+  <p id="status" role="status" aria-live="polite"></p>
+  <div id="listings"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const form = document.getElementById("login-form");
     const status = document.getElementById("status");
+    const listingsContainer = document.getElementById("listings");
+    const signoutButton = document.getElementById("signout");
 
-    function readListings() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-
-        if (!saved) return [];
-
-        const listings = JSON.parse(saved);
-
-        if (!Array.isArray(listings)) {
-            throw new Error("Saved job listings are not in the expected format.");
-        }
-
-        return listings;
+    async function hasSession() {
+      const { data, error } = await db.auth.getSession();
+      if (error) throw error;
+      return Boolean(data.session);
     }
 
-    function loadListings() {
-        listingsContainer.replaceChildren();
+    async function loadListings() {
+      listingsContainer.textContent = "Loading listings…";
 
-        try {
-            const listings = readListings();
+      const { data, error } = await db
+        .from("job_listings")
+        .select("id,job,country,region,address,created_at")
+        .order("created_at", { ascending: false });
 
-            if (listings.length === 0) {
-                listingsContainer.textContent = "No saved job listings found.";
-                return;
+      if (error) {
+        listingsContainer.textContent = "Could not load listings: " + error.message;
+        return;
+      }
+
+      listingsContainer.replaceChildren();
+      if (!data?.length) {
+        listingsContainer.textContent = "No saved listings found.";
+        return;
+      }
+
+      const managerSignedIn = await hasSession();
+
+      for (const item of data) {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const details = document.createElement("div");
+        details.className = "details";
+        const title = document.createElement("strong");
+        title.textContent = item.job || "Untitled job";
+        const location = document.createElement("div");
+        location.textContent =
+          [item.address, item.region, item.country].filter(Boolean).join(", ");
+        details.append(title, location);
+        row.appendChild(details);
+
+        if (managerSignedIn) {
+          const button = document.createElement("button");
+          button.className = "delete";
+          button.type = "button";
+          button.textContent = "Delete";
+          button.addEventListener("click", async () => {
+            if (!confirm(`Delete this listing: ${item.job || "Untitled job"}?`)) return;
+
+            button.disabled = true;
+            const { error: deleteError } = await db
+              .from("job_listings")
+              .delete()
+              .eq("id", item.id);
+
+            if (deleteError) {
+              status.textContent = "Could not delete listing: " + deleteError.message;
+              button.disabled = false;
+              return;
             }
 
-            listings.forEach((listing, index) => {
-                const row = document.createElement("div");
-                row.className = "listing-row";
-
-                const details = document.createElement("div");
-                details.className = "listing-details";
-
-                const title = document.createElement("strong");
-                title.textContent = listing.job || "Untitled job";
-
-                const location = document.createElement("div");
-                location.textContent =
-                    `${listing.address || ""}, ${listing.region || ""}, ${listing.country || ""}`;
-
-                details.append(title, location);
-
-                const deleteButton = document.createElement("button");
-                deleteButton.type = "button";
-                deleteButton.textContent = "Delete listing";
-
-                deleteButton.addEventListener("click", () => {
-                    try {
-                        // Reload the latest data in case it changed since rendering.
-                        const currentListings = readListings();
-
-                        // Delete this exact listing by its current position.
-                        currentListings.splice(index, 1);
-
-                        localStorage.setItem(
-                            STORAGE_KEY,
-                            JSON.stringify(currentListings)
-                        );
-
-                        status.textContent = "Job listing deleted.";
-                        loadListings();
-                    } catch (error) {
-                        status.textContent =
-                            "Could not delete listing: " + error.message;
-                    }
-                });
-
-                row.append(details, deleteButton);
-                listingsContainer.appendChild(row);
-            });
-        } catch (error) {
-            status.textContent =
-                "Could not read saved listings: " + error.message;
+            status.textContent = "Listing deleted.";
+            await loadListings();
+          });
+          row.appendChild(button);
         }
+
+        listingsContainer.appendChild(row);
+      }
+
+      if (!managerSignedIn) {
+        status.textContent = "Sign in as an authorized manager to delete listings.";
+      }
     }
 
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      status.textContent = "Signing in…";
+
+      const { error } = await db.auth.signInWithPassword({
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value
+      });
+
+      if (error) {
+        status.textContent = "Sign-in failed: " + error.message;
+        return;
+      }
+
+      status.textContent = "Signed in.";
+      signoutButton.hidden = false;
+      await loadListings();
+    });
+
+    signoutButton.addEventListener("click", async () => {
+      const { error } = await db.auth.signOut();
+      status.textContent = error ? "Sign-out failed: " + error.message : "Signed out.";
+      signoutButton.hidden = true;
+      await loadListings();
+    });
+
+    db.auth.onAuthStateChange((_event, session) => {
+      signoutButton.hidden = !session;
+      loadListings();
+    });
+
     loadListings();
-</script>
+  </script>
 </body>
 </html>
