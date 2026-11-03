@@ -125,9 +125,9 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Use the project URL and publishable key from Supabase → Project Settings → API.
-    const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
+    // Replace these with your values from Supabase → Project Settings → API.
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -194,7 +194,7 @@
           if (error) throw error;
 
           if (!data.user) {
-            throw new Error("Signup did not return a user. Check your Supabase Auth settings.");
+            throw new Error("Signup returned no user. Check your Supabase Auth settings.");
           }
 
           if (data.session) {
@@ -206,7 +206,10 @@
               );
 
             if (profileError) {
-              throw new Error("Account created, but profile saving failed: " + profileError.message);
+              throw new Error(
+                "Account created, but saving the profile failed: " +
+                profileError.message
+              );
             }
 
             showMessage("Account created. You can now sign in.", "green");
@@ -228,19 +231,21 @@
 
           if (error) throw error;
 
-          // Save/update the profile after login as well.
-          const usernameToSave =
+          const savedUsername =
             username || data.user.user_metadata?.username || email;
 
           const { error: profileError } = await supabase
             .from("profiles")
             .upsert(
-              { id: data.user.id, username: usernameToSave },
+              { id: data.user.id, username: savedUsername },
               { onConflict: "id" }
             );
 
           if (profileError) {
-            throw new Error("Signed in, but profile saving failed: " + profileError.message);
+            throw new Error(
+              "Signed in, but saving the profile failed: " +
+              profileError.message
+            );
           }
 
           showMessage("Login successful. Redirecting…", "green");
