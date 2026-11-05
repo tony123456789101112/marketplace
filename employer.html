@@ -140,9 +140,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // Supabase settings.
         const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
-
-        // Replace with your Supabase publishable/anon key if needed.
         const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -580,6 +579,16 @@
             "Zoologist (Zoology / Animal Biology Bachelor's or Master's)"
         ];
 
+        const COUNTRIES = [
+            { value: "United Kingdom", label: "UK" },
+            { value: "Germany", label: "Germany" },
+            { value: "Singapore", label: "Singapore" },
+            { value: "United States", label: "America" },
+            { value: "Denmark", label: "Denmark" },
+            { value: "Italy", label: "Italy" },
+            { value: "Norway", label: "Norway" }
+        ];
+
         const countrySelect = document.getElementById("country");
         const regionSelect = document.getElementById("region");
         const form = document.getElementById("job-form");
@@ -617,29 +626,15 @@
         }
 
         function loadCountries() {
-            const countries = [
-                "United Kingdom",
-                "Germany",
-                "Singapore",
-                "United States",
-                "Denmark",
-                "Italy",
-                "Norway"
-            ];
-
-            countrySelect.replaceChildren();
-
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = "Choose a country";
-            countrySelect.appendChild(placeholder);
-
-            countries.sort(compareText).forEach(country => {
-                const option = document.createElement("option");
-                option.value = country;
-                option.textContent = country;
-                countrySelect.appendChild(option);
-            });
+            COUNTRIES
+                .slice()
+                .sort((a, b) => compareText(a.label, b.label))
+                .forEach(country => {
+                    const option = document.createElement("option");
+                    option.value = country.value;
+                    option.textContent = country.label;
+                    countrySelect.appendChild(option);
+                });
         }
 
         async function loadRegions(country) {
@@ -675,7 +670,7 @@
                     regionSelect.appendChild(option);
                 });
 
-                if (regions.length) {
+                if (regions.length > 0) {
                     regionSelect.disabled = false;
                 } else {
                     regionSelect.innerHTML =
@@ -875,6 +870,7 @@
                 setMessage(
                     "Job listing saved. It will no longer display after 30 days."
                 );
+
                 await renderListings();
             } catch (error) {
                 setMessage("Could not save listing: " + error.message, true);
