@@ -140,17 +140,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // Supabase settings.
         const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
 
-        // LINE 94: Replace the text inside the quotes with your publishable/anon key.
+        // Replace with your Supabase publishable/anon key if needed.
         const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-        // Format: Full job title (qualification wording).
-        // The job list is retained from your original page.
         const JOBS = [
             "Abuse Counselor (Clinical) (Clinical Counseling / Psychology Master's)",
             "Academic Advisor (Higher Education / Counseling Master's)",
@@ -620,43 +617,34 @@
         }
 
         function loadCountries() {
-            try {
-                const displayCountry = new Intl.DisplayNames(["en"], {
-                    type: "region"
-                });
+            const countries = [
+                "United Kingdom",
+                "Germany",
+                "Singapore",
+                "United States",
+                "Denmark",
+                "Italy",
+                "Norway"
+            ];
 
-                const countries = [];
+            countrySelect.replaceChildren();
 
-                for (let first = 65; first <= 90; first++) {
-                    for (let second = 65; second <= 90; second++) {
-                        const code = String.fromCharCode(first, second);
-                        const name = displayCountry.of(code);
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Choose a country";
+            countrySelect.appendChild(placeholder);
 
-                        if (name && name !== code && !name.startsWith("Unknown")) {
-                            countries.push({ code, name });
-                        }
-                    }
-                }
-
-                countries.sort((a, b) => compareText(a.name, b.name));
-
-                countries.forEach(country => {
-                    const option = document.createElement("option");
-                    option.value = country.name;
-                    option.textContent = country.name;
-                    countrySelect.appendChild(option);
-                });
-            } catch (error) {
-                countrySelect.innerHTML =
-                    '<option value="">Country list unavailable</option>';
-                setMessage("Your browser could not create the country list.", true);
-            }
+            countries.sort(compareText).forEach(country => {
+                const option = document.createElement("option");
+                option.value = country;
+                option.textContent = country;
+                countrySelect.appendChild(option);
+            });
         }
 
         async function loadRegions(country) {
             regionSelect.disabled = true;
-            regionSelect.innerHTML =
-                '<option value="">Loading regions…</option>';
+            regionSelect.innerHTML = '<option value="">Loading regions…</option>';
             setMessage("");
 
             try {
@@ -884,7 +872,9 @@
                 regionSelect.innerHTML =
                     '<option value="">Choose a country first</option>';
 
-                setMessage("Job listing saved. It will no longer display after 30 days.");
+                setMessage(
+                    "Job listing saved. It will no longer display after 30 days."
+                );
                 await renderListings();
             } catch (error) {
                 setMessage("Could not save listing: " + error.message, true);
