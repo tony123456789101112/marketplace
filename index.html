@@ -105,7 +105,7 @@
 
 <body>
     <main class="form-card">
-        <h1 id="form-title">Marketplace</h1>
+        <h1 id="form-title">Hindson</h1>
 
         <p class="intro">
             Finding jobs with or without a degree worldwide? Want to work in a
@@ -163,10 +163,11 @@
                 title.textContent = "Create New User";
                 button.textContent = "Register Account";
                 button.className = "action-btn register-mode-btn";
-                toggleText.textContent = "Already have an account? Sign in";
+                toggleText.textContent =
+                    "Already have an account? Sign in";
                 passwordInput.autocomplete = "new-password";
             } else {
-                title.textContent = "Hindson Marketplace";
+                title.textContent = "Hindson";
                 button.textContent = "Sign In";
                 button.className = "action-btn";
                 toggleText.textContent =
@@ -203,7 +204,9 @@
                     "Account created. You can now sign in.";
 
                 setTimeout(() => {
-                    if (isRegisterMode) toggleMode();
+                    if (isRegisterMode) {
+                        toggleMode();
+                    }
                 }, 1200);
 
                 return;
@@ -218,7 +221,8 @@
                 localStorage.setItem("currentUser", username);
 
                 message.style.color = "green";
-                message.textContent = "Login successful. Redirecting...";
+                message.textContent =
+                    "Login successful. Redirecting...";
 
                 setTimeout(() => {
                     window.location.href = "dashboard.html";
