@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Dashboard</title>
+    <title>Hindson Marketplace Dashboard</title>
 
     <style>
         * {
@@ -108,23 +108,15 @@
             font: inherit;
         }
 
-        .management-login button,
-        .logout-btn {
+        .management-login button {
             margin-top: 14px;
             padding: 10px 18px;
             border: 0;
             border-radius: 4px;
             color: white;
+            background: #d97706;
             cursor: pointer;
             font: inherit;
-        }
-
-        .management-login button {
-            background: #d97706;
-        }
-
-        .logout-btn {
-            background: #666;
         }
 
         .message {
@@ -140,11 +132,12 @@
         }
     </style>
 </head>
+
 <body>
     <main class="portal-card">
-        <h1>Postgraduate Careers</h1>
+        <h1>Hindson Marketplace</h1>
 
-        <p id="welcome-message">Choose a portal to continue.</p>
+        <p>Choose a section to explore.</p>
 
         <div class="btn-container">
             <a href="employee.html" class="enter-btn employee-btn">
@@ -173,34 +166,22 @@
 
         <form id="management-login" class="management-login">
             <label for="management-password">
-                Management password (May God bless you)
+                Management password
             </label>
 
             <input
                 id="management-password"
                 type="password"
                 autocomplete="current-password"
-                required>
+                required
+            >
 
             <button type="submit">Continue</button>
             <p id="message" class="message" role="status"></p>
         </form>
-
-        <button type="button" class="logout-btn" id="logout-button">
-            Log out
-        </button>
     </main>
 
     <script>
-        // Keep this check if only logged-in users should use the dashboard.
-        if (localStorage.getItem("isLoggedIn") !== "true") {
-            window.location.replace("login.html");
-        } else {
-            const user = localStorage.getItem("currentUser") || "user";
-            document.getElementById("welcome-message").textContent =
-                `Welcome, ${user}. Choose a portal to continue.`;
-        }
-
         const managementButton =
             document.getElementById("management-button");
         const managementForm =
@@ -225,19 +206,12 @@
             if (passwordInput.value === "FatBallHarry2006$$") {
                 window.location.href = "management.html";
             } else {
-                message.textContent = "Incorrect password. Please try again.";
+                message.textContent =
+                    "Incorrect password. Please try again.";
                 passwordInput.value = "";
                 passwordInput.focus();
             }
         });
-
-        document
-            .getElementById("logout-button")
-            .addEventListener("click", () => {
-                localStorage.removeItem("isLoggedIn");
-                localStorage.removeItem("currentUser");
-                window.location.href = "index.html";
-            });
     </script>
 </body>
 </html>
