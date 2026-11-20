@@ -3,245 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Hindson Marketplace</title>
-    <meta
-        name="description"
-        content="Explore job opportunities, connect with entrepreneurs, and discover shops on Hindson Marketplace."
-    >
-    <link
-        rel="canonical"
-        href="https://tony123456789101112.github.io/marketplace/"
-    >
+    <title>Account Dashboard</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            color: #333;
             padding: 20px;
-            box-sizing: border-box;
         }
 
-        .form-card {
+        .portal-card {
             background: white;
-            padding: 40px 30px;
+            padding: 40px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            width: 340px;
-            max-width: 100%;
-            box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .08);
+            text-align: center;
+            max-width: 480px;
+            width: 100%;
         }
 
         h1 {
-            margin: 0 0 12px;
-            text-align: center;
-            color: #222;
+            color: #28a745;
+            margin: 0 0 15px;
         }
 
-        .intro {
-            margin: 0 0 25px;
-            text-align: center;
-            color: #555;
+        p {
+            color: #666;
             line-height: 1.5;
+            margin-bottom: 25px;
         }
 
-        .input-box {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
+        .btn-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
-        .action-btn {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            border: 0;
-            border-radius: 4px;
-            background: #007bff;
+        .enter-btn {
+            flex: 1 1 120px;
+            padding: 12px 16px;
             color: white;
-            font-size: 16px;
+            text-decoration: none;
+            border-radius: 4px;
             font-weight: bold;
-            cursor: pointer;
+            text-align: center;
         }
 
-        .action-btn:hover {
-            background: #0056b3;
+        .employee-btn {
+            background: #007bff;
         }
 
-        .register-mode-btn {
+        .employer-btn {
             background: #28a745;
         }
 
-        .register-mode-btn:hover {
-            background: #218838;
+        .marketplace-btn {
+            background: #6f42c1;
         }
 
-        .toggle-link {
-            margin-top: 20px;
-            color: #007bff;
-            text-align: center;
-            font-size: 14px;
+        .about-btn {
+            background: #17a2b8;
+        }
+
+        .management-btn {
+            background: #d97706;
+            border: 0;
+            font: inherit;
             cursor: pointer;
-            text-decoration: underline;
         }
 
-        .status-msg {
-            min-height: 20px;
-            margin-top: 15px;
-            font-size: 14px;
-            text-align: center;
+        .management-login {
+            display: none;
+            margin-top: 22px;
+            padding: 18px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        .management-login.open {
+            display: block;
+        }
+
+        .management-login label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .management-login input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font: inherit;
+        }
+
+        .management-login button,
+        .logout-btn {
+            margin-top: 14px;
+            padding: 10px 18px;
+            border: 0;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .management-login button {
+            background: #d97706;
+        }
+
+        .logout-btn {
+            background: #666;
+        }
+
+        .message {
+            min-height: 1.4em;
+            margin: 10px 0 0;
+            color: #b42318;
+        }
+
+        @media (max-width: 420px) {
+            .portal-card {
+                padding: 28px 20px;
+            }
         }
     </style>
 </head>
-
 <body>
-    <main class="form-card">
-        <h1 id="form-title">Hindson Marketplace</h1>
+    <main class="portal-card">
+        <h1>Postgraduate Careers</h1>
 
-        <p class="intro">
-            Finding jobs with or without a degree worldwide? Want to work in a
-            foreign city, find people to work with as an entrepreneur, or
-            advertise your physical shop online? Sign in to find what you need.
-        </p>
+        <p id="welcome-message">Choose a portal to continue.</p>
 
-        <form id="auth-form">
-            <input
-                type="text"
-                id="username"
-                class="input-box"
-                placeholder="Username"
-                autocomplete="username"
-                required
-            >
+        <div class="btn-container">
+            <a href="employee.html" class="enter-btn employee-btn">
+                Candidate Portal
+            </a>
 
-            <input
-                type="password"
-                id="password"
-                class="input-box"
-                placeholder="Password"
-                autocomplete="current-password"
-                required
-            >
+            <a href="employer.html" class="enter-btn employer-btn">
+                Employer Portal
+            </a>
 
-            <button id="primary-btn" class="action-btn" type="submit">
-                Sign In
+            <a href="marketplace.html" class="enter-btn marketplace-btn">
+                Marketplace
+            </a>
+
+            <a href="about.html" class="enter-btn about-btn">
+                About Us
+            </a>
+
+            <button
+                type="button"
+                class="enter-btn management-btn"
+                id="management-button">
+                Management Team
             </button>
-        </form>
-
-        <div id="toggle-text" class="toggle-link" role="button" tabindex="0">
-            Don't have an account? Create new user
         </div>
 
-        <p id="status-display" class="status-msg" aria-live="polite"></p>
+        <form id="management-login" class="management-login">
+            <label for="management-password">
+                Management password (May God bless you)
+            </label>
+
+            <input
+                id="management-password"
+                type="password"
+                autocomplete="current-password"
+                required>
+
+            <button type="submit">Continue</button>
+            <p id="message" class="message" role="status"></p>
+        </form>
+
+        <button type="button" class="logout-btn" id="logout-button">
+            Log out
+        </button>
     </main>
 
     <script>
-        let isRegisterMode = false;
-
-        const form = document.getElementById("auth-form");
-        const title = document.getElementById("form-title");
-        const button = document.getElementById("primary-btn");
-        const toggleText = document.getElementById("toggle-text");
-        const message = document.getElementById("status-display");
-        const usernameInput = document.getElementById("username");
-        const passwordInput = document.getElementById("password");
-
-        function toggleMode() {
-            isRegisterMode = !isRegisterMode;
-            message.textContent = "";
-
-            if (isRegisterMode) {
-                title.textContent = "Create New User";
-                button.textContent = "Register Account";
-                button.className = "action-btn register-mode-btn";
-                toggleText.textContent =
-                    "Already have an account? Sign in";
-                passwordInput.autocomplete = "new-password";
-            } else {
-                title.textContent = "Hindson Marketplace";
-                button.textContent = "Sign In";
-                button.className = "action-btn";
-                toggleText.textContent =
-                    "Don't have an account? Create new user";
-                passwordInput.autocomplete = "current-password";
-            }
+        // Keep this check if only logged-in users should use the dashboard.
+        if (localStorage.getItem("isLoggedIn") !== "true") {
+            window.location.replace("login.html");
+        } else {
+            const user = localStorage.getItem("currentUser") || "user";
+            document.getElementById("welcome-message").textContent =
+                `Welcome, ${user}. Choose a portal to continue.`;
         }
 
-        form.addEventListener("submit", (event) => {
+        const managementButton =
+            document.getElementById("management-button");
+        const managementForm =
+            document.getElementById("management-login");
+        const passwordInput =
+            document.getElementById("management-password");
+        const message =
+            document.getElementById("message");
+
+        managementButton.addEventListener("click", () => {
+            managementForm.classList.toggle("open");
+            message.textContent = "";
+
+            if (managementForm.classList.contains("open")) {
+                passwordInput.focus();
+            }
+        });
+
+        managementForm.addEventListener("submit", event => {
             event.preventDefault();
 
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-            const storageKey = `user_profile_${username}`;
-
-            if (!username || !password.trim()) {
-                message.style.color = "red";
-                message.textContent =
-                    "Enter both a username and password.";
-                return;
-            }
-
-            if (isRegisterMode) {
-                if (localStorage.getItem(storageKey) !== null) {
-                    message.style.color = "red";
-                    message.textContent =
-                        "That username is already registered.";
-                    return;
-                }
-
-                localStorage.setItem(storageKey, password);
-                message.style.color = "green";
-                message.textContent =
-                    "Account created. You can now sign in.";
-
-                setTimeout(() => {
-                    if (isRegisterMode) {
-                        toggleMode();
-                    }
-                }, 1200);
-
-                return;
-            }
-
-            const savedPassword = localStorage.getItem(storageKey);
-            const isDemoAdmin =
-                username === "admin" && password === "1234";
-
-            if (isDemoAdmin || savedPassword === password) {
-                localStorage.setItem("isLoggedIn", "true");
-                localStorage.setItem("currentUser", username);
-
-                message.style.color = "green";
-                message.textContent =
-                    "Login successful. Redirecting...";
-
-                setTimeout(() => {
-                    window.location.href = "dashboard.html";
-                }, 500);
+            if (passwordInput.value === "FatBallHarry2006$$") {
+                window.location.href = "management.html";
             } else {
-                message.style.color = "red";
-                message.textContent =
-                    "Incorrect username or password.";
+                message.textContent = "Incorrect password. Please try again.";
+                passwordInput.value = "";
+                passwordInput.focus();
             }
         });
 
-        toggleText.addEventListener("click", toggleMode);
-
-        toggleText.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                toggleMode();
-            }
-        });
+        document
+            .getElementById("logout-button")
+            .addEventListener("click", () => {
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("currentUser");
+                window.location.href = "index.html";
+            });
     </script>
 </body>
 </html>
