@@ -108,8 +108,7 @@
             font: inherit;
         }
 
-        .management-login button,
-        .logout-btn {
+        .management-login button {
             margin-top: 14px;
             padding: 10px 18px;
             border: 0;
@@ -117,14 +116,7 @@
             color: white;
             cursor: pointer;
             font: inherit;
-        }
-
-        .management-login button {
             background: #d97706;
-        }
-
-        .logout-btn {
-            background: #666;
         }
 
         .message {
@@ -185,10 +177,6 @@
             <button type="submit">Continue</button>
             <p id="message" class="message" role="status"></p>
         </form>
-
-        <button type="button" class="logout-btn" id="logout-button">
-            Log out
-        </button>
     </main>
 
     <script>
@@ -230,14 +218,6 @@
                 passwordInput.focus();
             }
         });
-
-        document
-            .getElementById("logout-button")
-            .addEventListener("click", () => {
-                localStorage.removeItem("isLoggedIn");
-                localStorage.removeItem("currentUser");
-                window.location.href = "index.html";
-            });
     </script>
 </body>
 </html>
