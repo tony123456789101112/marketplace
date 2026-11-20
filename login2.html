@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Hindson Marketplace</title>
+    <meta
+        name="description"
+        content="Explore job opportunities, connect with entrepreneurs, and discover shops on Hindson Marketplace."
+    >
+    <link
+        rel="canonical"
+        href="https://tony123456789101112.github.io/marketplace/"
+    >
 
     <style>
         body {
@@ -64,9 +73,17 @@
             cursor: pointer;
         }
 
-        .action-btn:hover { background: #0056b3; }
-        .register-mode-btn { background: #28a745; }
-        .register-mode-btn:hover { background: #218838; }
+        .action-btn:hover {
+            background: #0056b3;
+        }
+
+        .register-mode-btn {
+            background: #28a745;
+        }
+
+        .register-mode-btn:hover {
+            background: #218838;
+        }
 
         .toggle-link {
             margin-top: 20px;
@@ -85,9 +102,11 @@
         }
     </style>
 </head>
+
 <body>
     <main class="form-card">
         <h1 id="form-title">Hindson Marketplace</h1>
+
         <p class="intro">
             Finding jobs with or without a degree worldwide? Want to work in a
             foreign city, find people to work with as an entrepreneur, or
@@ -144,13 +163,15 @@
                 title.textContent = "Create New User";
                 button.textContent = "Register Account";
                 button.className = "action-btn register-mode-btn";
-                toggleText.textContent = "Already have an account? Sign in";
+                toggleText.textContent =
+                    "Already have an account? Sign in";
                 passwordInput.autocomplete = "new-password";
             } else {
-                title.textContent = "Marketplace";
+                title.textContent = "Hindson Marketplace";
                 button.textContent = "Sign In";
                 button.className = "action-btn";
-                toggleText.textContent = "Don't have an account? Create new user";
+                toggleText.textContent =
+                    "Don't have an account? Create new user";
                 passwordInput.autocomplete = "current-password";
             }
         }
@@ -164,42 +185,52 @@
 
             if (!username || !password.trim()) {
                 message.style.color = "red";
-                message.textContent = "Enter both a username and password.";
+                message.textContent =
+                    "Enter both a username and password.";
                 return;
             }
 
             if (isRegisterMode) {
                 if (localStorage.getItem(storageKey) !== null) {
                     message.style.color = "red";
-                    message.textContent = "That username is already registered.";
+                    message.textContent =
+                        "That username is already registered.";
                     return;
                 }
 
                 localStorage.setItem(storageKey, password);
                 message.style.color = "green";
-                message.textContent = "Account created. You can now sign in.";
+                message.textContent =
+                    "Account created. You can now sign in.";
 
                 setTimeout(() => {
-                    if (isRegisterMode) toggleMode();
+                    if (isRegisterMode) {
+                        toggleMode();
+                    }
                 }, 1200);
+
                 return;
             }
 
             const savedPassword = localStorage.getItem(storageKey);
-            const isDemoAdmin = username === "admin" && password === "1234";
+            const isDemoAdmin =
+                username === "admin" && password === "1234";
 
             if (isDemoAdmin || savedPassword === password) {
                 localStorage.setItem("isLoggedIn", "true");
                 localStorage.setItem("currentUser", username);
+
                 message.style.color = "green";
-                message.textContent = "Login successful. Redirecting...";
+                message.textContent =
+                    "Login successful. Redirecting...";
 
                 setTimeout(() => {
                     window.location.href = "dashboard.html";
                 }, 500);
             } else {
                 message.style.color = "red";
-                message.textContent = "Incorrect username or password.";
+                message.textContent =
+                    "Incorrect username or password.";
             }
         });
 
