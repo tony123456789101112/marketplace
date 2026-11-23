@@ -6,12 +6,17 @@
     <title>Employer Workspace - Postgraduate Careers</title>
 
     <style>
+        :root {
+            color-scheme: light;
+        }
+
         body {
             font-family: Arial, sans-serif;
             max-width: 900px;
             margin: 40px auto;
             padding: 0 20px;
             color: #333;
+            background-color: #fff;
         }
 
         form,
@@ -39,6 +44,46 @@
             padding: 10px;
             margin-top: 5px;
             font: inherit;
+            color: #222;
+            background-color: #fff;
+            border: 1px solid #888;
+            border-radius: 4px;
+        }
+
+        /*
+         * Explicit search-field colors help prevent white text on a white
+         * background while typing, including when the field receives focus.
+         */
+        #qualification-search,
+        #qualification-search:focus,
+        #qualification-search:active {
+            color: #111 !important;
+            background-color: #fff !important;
+            -webkit-text-fill-color: #111 !important;
+            caret-color: #111 !important;
+            opacity: 1 !important;
+        }
+
+        #qualification-search::placeholder {
+            color: #666 !important;
+            -webkit-text-fill-color: #666 !important;
+            opacity: 1;
+        }
+
+        #qualification-search:focus {
+            outline: 3px solid #2563eb;
+            outline-offset: 2px;
+            border-color: #2563eb;
+        }
+
+        /* Keep readable colors if the browser applies autofill styling. */
+        #qualification-search:-webkit-autofill,
+        #qualification-search:-webkit-autofill:hover,
+        #qualification-search:-webkit-autofill:focus,
+        #qualification-search:-webkit-autofill:active {
+            -webkit-text-fill-color: #111 !important;
+            box-shadow: 0 0 0 1000px #fff inset !important;
+            caret-color: #111 !important;
         }
 
         textarea {
@@ -109,9 +154,12 @@
         <label for="qualification-search">Degree or diploma</label>
         <input
             id="qualification-search"
+            name="qualification"
             type="text"
             list="qualification-options"
             autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
             placeholder="Type to search degrees or diplomas"
             required
         >
@@ -645,20 +693,15 @@
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
 
-        /*
-         * Returns the text inside the final outer parentheses.
-         * Handles nested parentheses, for example:
-         * "Behavior Analyst (BCBA) (Applied Behavior Analysis / Psychology Master's)"
-         */
         function getQualification(job) {
-            const finalOpen = job.lastIndexOf("(");
-            const finalClose = job.lastIndexOf(")");
+            const open = job.lastIndexOf("(");
+            const close = job.lastIndexOf(")");
 
-            if (finalOpen === -1 || finalClose === -1 || finalClose < finalOpen) {
+            if (open === -1 || close === -1 || close < open) {
                 return "";
             }
 
-            return job.slice(finalOpen + 1, finalClose).trim();
+            return job.slice(open + 1, close).trim();
         }
 
         function compareText(a, b) {
@@ -698,11 +741,11 @@
         }
 
         function loadRelatedJobs(qualification) {
-            const selectedQualification = qualification.trim().toLocaleLowerCase();
+            const normalized = qualification.trim().toLocaleLowerCase();
 
             const matchingJobs = JOBS
                 .filter(job =>
-                    getQualification(job).toLocaleLowerCase() === selectedQualification
+                    getQualification(job).toLocaleLowerCase() === normalized
                 )
                 .sort(compareText);
 
@@ -719,7 +762,6 @@
                 const option = document.createElement("option");
                 option.value = job;
 
-                // Show the job title without the qualification in the dropdown.
                 const titleEnd = job.lastIndexOf(" (");
                 option.textContent =
                     titleEnd > 0 ? job.slice(0, titleEnd) : job;
@@ -728,22 +770,14 @@
             });
 
             jobSelect.disabled = matchingJobs.length === 0;
-
-            if (matchingJobs.length === 0) {
-                setMessage(
-                    "No listed jobs match that qualification. Try choosing a suggestion.",
-                    true
-                );
-            } else {
-                setMessage("");
-            }
+            setMessage(
+                matchingJobs.length
+                    ? ""
+                    : "No listed jobs match that qualification. Try a suggestion.",
+                matchingJobs.length === 0
+            );
         }
 
-        /*
-         * Do not clear or rewrite the search input while the user is typing.
-         * The related-job list updates only when the typed text exactly matches
-         * one of the qualification suggestions.
-         */
         qualificationSearch.addEventListener("input", () => {
             const typedQualification = qualificationSearch.value.trim();
 
