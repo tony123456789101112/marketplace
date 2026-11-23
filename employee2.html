@@ -3,86 +3,346 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Available Jobs</title>
+  <title>Search Available Jobs</title>
+
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; }
-    .job-group, .country-group, .region-group, .listing { padding: 20px; margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; }
-    .job-group { background: #f7f9fc; }
-    .country-group, .region-group, .listing { margin-left: 12px; }
-    .country-group { background: #fff; }
-    .region-group { background: #fafafa; }
-    .listing p { margin: 8px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
-    .empty { color: #666; }
+    body {
+      max-width: 1000px;
+      margin: 35px auto;
+      padding: 0 20px;
+      font-family: Arial, sans-serif;
+      color: #333;
+      background: #fff;
+    }
+
+    .search-panel,
+    .job-group,
+    .country-group,
+    .region-group,
+    .listing {
+      padding: 18px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .search-panel {
+      background: #f7f9fc;
+    }
+
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: bold;
+    }
+
+    input,
+    select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px;
+      margin-top: 5px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      font: inherit;
+    }
+
+    input:focus,
+    select:focus {
+      outline: 2px solid #377dcc;
+      outline-offset: 1px;
+    }
+
+    .hint,
+    .empty,
+    #result-count {
+      color: #666;
+    }
+
+    .job-group {
+      background: #f7f9fc;
+    }
+
+    .country-group {
+      margin-left: 12px;
+      background: #fff;
+    }
+
+    .region-group {
+      margin-left: 12px;
+      background: #fafafa;
+    }
+
+    .listing {
+      margin-left: 12px;
+    }
+
+    .listing p {
+      margin: 8px 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        margin: 20px auto;
+      }
+
+      .country-group,
+      .region-group,
+      .listing {
+        margin-left: 0;
+      }
+    }
   </style>
 </head>
+
 <body>
   <h1>Employee Workspace</h1>
-  <h2>Available jobs — alphabetical groups</h2>
+  <h2>Search available jobs</h2>
+
+  <section class="search-panel" aria-label="Job search filters">
+    <label for="qualification-search">Degree or diploma</label>
+    <input
+      id="qualification-search"
+      type="text"
+      list="qualification-options"
+      autocomplete="off"
+      placeholder="Type to search degrees or diplomas"
+    >
+    <datalist id="qualification-options"></datalist>
+    <p class="hint">Select a qualification suggestion to see its related jobs.</p>
+
+    <label for="job-search">Related job</label>
+    <select id="job-search" disabled>
+      <option value="">Choose a degree or diploma first</option>
+    </select>
+
+    <label for="keyword-search">Search job details (optional)</label>
+    <input
+      id="keyword-search"
+      type="search"
+      placeholder="Search description, location, salary, or other details"
+    >
+
+    <p id="result-count" aria-live="polite">Loading listings…</p>
+  </section>
+
   <div id="listings" aria-live="polite">Loading listings…</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
     const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
-    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const listingsContainer = document.getElementById("listings");
+    const EMPLOYER_PAGE_URL = "employer.html";
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const qualificationInput =
+      document.getElementById("qualification-search");
+    const qualificationOptions =
+      document.getElementById("qualification-options");
+    const jobSelect =
+      document.getElementById("job-search");
+    const keywordInput =
+      document.getElementById("keyword-search");
+    const listingsContainer =
+      document.getElementById("listings");
+    const resultCount =
+      document.getElementById("result-count");
+
+    let degreeJobs = {};
+    let qualificationNames = [];
+    let allListings = [];
+
     function compareText(a, b) {
-      return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+      return String(a || "").localeCompare(String(b || ""), undefined, {
+        sensitivity: "base",
+        numeric: true
+      });
+    }
+
+    function normalize(value) {
+      return String(value || "").trim().toLocaleLowerCase();
+    }
+
+    function getSelectedQualification() {
+      const typed = normalize(qualificationInput.value);
+      return qualificationNames.find(
+        name => normalize(name) === typed
+      ) || "";
+    }
+
+    /*
+     * Loads the existing DEGREE_JOBS object from employer.html.
+     * This avoids duplicating its entire qualification/job list here.
+     */
+    async function loadDegreeJobs() {
+      const response = await fetch(EMPLOYER_PAGE_URL, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load ${EMPLOYER_PAGE_URL}. Make sure employee.html and employer.html are in the same folder and served from the same website.`
+        );
+      }
+
+      const html = await response.text();
+
+      /*
+       * Find the DEGREE_JOBS object in employer.html and evaluate only
+       * that object declaration. The employer page must declare it as:
+       * const DEGREE_JOBS = { ... };
+       */
+      const match = html.match(
+        /\bconst\s+DEGREE_JOBS\s*=\s*(\{[\s\S]*?\n\s*\});/
+      );
+
+      if (!match) {
+        throw new Error(
+          "Could not find `const DEGREE_JOBS = { ... };` in employer.html."
+        );
+      }
+
+      const parsed = Function(`"use strict"; return (${match[1]});`)();
+
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("The DEGREE_JOBS map in employer.html is not valid.");
+      }
+
+      degreeJobs = parsed;
+      qualificationNames = Object.keys(degreeJobs).sort(compareText);
+
+      qualificationOptions.replaceChildren();
+
+      for (const qualification of qualificationNames) {
+        const option = document.createElement("option");
+        option.value = qualification;
+        qualificationOptions.appendChild(option);
+      }
+    }
+
+    function resetJobSelect(placeholder) {
+      jobSelect.replaceChildren();
+
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = placeholder;
+      jobSelect.appendChild(option);
+      jobSelect.disabled = true;
+    }
+
+    function populateRelatedJobs(qualification) {
+      const jobs = degreeJobs[qualification] || [];
+
+      resetJobSelect(
+        jobs.length ? "All related jobs" : "No related jobs found"
+      );
+
+      for (const title of [...new Set(jobs)].sort(compareText)) {
+        const option = document.createElement("option");
+        option.value = title;
+        option.textContent = title;
+        jobSelect.appendChild(option);
+      }
+
+      jobSelect.disabled = jobs.length === 0;
+    }
+
+    function listingMatchesFilters(listing) {
+      const qualification = getSelectedQualification();
+      const selectedJob = jobSelect.value;
+      const keyword = normalize(keywordInput.value);
+
+      if (qualificationInput.value.trim() && !qualification) {
+        return false;
+      }
+
+      if (qualification) {
+        const relatedJobs = degreeJobs[qualification] || [];
+
+        if (selectedJob) {
+          if (normalize(listing.job) !== normalize(selectedJob)) {
+            return false;
+          }
+        } else if (!relatedJobs.some(
+          title => normalize(title) === normalize(listing.job)
+        )) {
+          return false;
+        }
+      }
+
+      if (keyword) {
+        const searchableText = [
+          listing.job,
+          listing.country,
+          listing.region,
+          listing.address,
+          listing.telephone,
+          listing.income,
+          listing.work_hours,
+          listing.description
+        ].join(" ").toLocaleLowerCase();
+
+        if (!searchableText.includes(keyword)) {
+          return false;
+        }
+      }
+
+      return true;
     }
 
     function makeGroup(title, className, headingTag = "h3") {
       const section = document.createElement("section");
       section.className = className;
+
       const heading = document.createElement(headingTag);
       heading.textContent = title;
       section.appendChild(heading);
+
       return section;
     }
 
     function addDetail(container, label, value) {
-      const p = document.createElement("p");
+      const paragraph = document.createElement("p");
       const strong = document.createElement("strong");
-      strong.textContent = `${label}: `;
-      p.append(strong, document.createTextNode(value || "Not provided"));
-      container.appendChild(p);
+
+      strong.textContent = label + ": ";
+      paragraph.append(strong, document.createTextNode(value || "Not provided"));
+      container.appendChild(paragraph);
     }
 
-    async function renderListings() {
-      listingsContainer.textContent = "Loading listings…";
-
-      const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
-      const { data, error } = await db
-        .from("job_listings")
-        .select("job,country,region,address,telephone,income,work_hours,description,created_at")
-        .gte("created_at", cutoff);
-
-      if (error) {
-        listingsContainer.textContent = "Could not load listings: " + error.message;
-        return;
-      }
-
-      const listings = data || [];
+    function renderListings() {
+      const filtered = allListings.filter(listingMatchesFilters);
       listingsContainer.replaceChildren();
 
-      if (!listings.length) {
+      resultCount.textContent =
+        `${filtered.length} ${filtered.length === 1 ? "listing" : "listings"} found`;
+
+      if (!filtered.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "No current job listings are available.";
+        empty.textContent = allListings.length
+          ? "No listings match your search. Try another qualification, job, or keyword."
+          : "No current job listings are available.";
         listingsContainer.appendChild(empty);
         return;
       }
 
       const jobs = new Map();
-      for (const item of listings) {
+
+      for (const item of filtered) {
         const job = item.job || "Unspecified job";
         const country = item.country || "Unspecified country";
         const region = item.region || "Unspecified region";
 
         if (!jobs.has(job)) jobs.set(job, new Map());
+
         const countries = jobs.get(job);
         if (!countries.has(country)) countries.set(country, new Map());
+
         const regions = countries.get(country);
         if (!regions.has(region)) regions.set(region, []);
         regions.get(region).push(item);
@@ -98,31 +358,83 @@
 
           for (const region of [...regions.keys()].sort(compareText)) {
             const regionSection = makeGroup(region, "region-group");
-
-            const sorted = regions.get(region).sort((a, b) =>
-              compareText(a.address || "", b.address || "")
+            const sortedListings = regions.get(region).sort(
+              (a, b) => compareText(a.address, b.address)
             );
 
-            for (const item of sorted) {
+            for (const item of sortedListings) {
               const article = document.createElement("article");
               article.className = "listing";
+
               addDetail(article, "Address", item.address);
               addDetail(article, "Telephone", item.telephone);
               addDetail(article, "Income / Salary", item.income);
               addDetail(article, "Work hours / schedule", item.work_hours);
               addDetail(article, "Description", item.description);
+
               regionSection.appendChild(article);
             }
 
             countrySection.appendChild(regionSection);
           }
+
           jobSection.appendChild(countrySection);
         }
+
         listingsContainer.appendChild(jobSection);
       }
     }
 
-    renderListings();
+    async function loadListings() {
+      const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+
+      const { data, error } = await db
+        .from("job_listings")
+        .select("job,country,region,address,telephone,income,work_hours,description,created_at")
+        .gte("created_at", cutoff);
+
+      if (error) throw error;
+
+      allListings = data || [];
+    }
+
+    qualificationInput.addEventListener("input", () => {
+      const qualification = getSelectedQualification();
+
+      if (qualification) {
+        populateRelatedJobs(qualification);
+      } else {
+        resetJobSelect(
+          qualificationInput.value.trim()
+            ? "Select a qualification suggestion first"
+            : "Choose a degree or diploma first"
+        );
+      }
+
+      renderListings();
+    });
+
+    jobSelect.addEventListener("change", renderListings);
+    keywordInput.addEventListener("input", renderListings);
+
+    async function start() {
+      try {
+        resultCount.textContent = "Loading qualifications and listings…";
+
+        await Promise.all([
+          loadDegreeJobs(),
+          loadListings()
+        ]);
+
+        resetJobSelect("Choose a degree or diploma first");
+        renderListings();
+      } catch (error) {
+        resultCount.textContent = "Could not load the job search.";
+        listingsContainer.textContent = error.message;
+      }
+    }
+
+    start();
   </script>
 </body>
 </html>
