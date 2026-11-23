@@ -94,10 +94,17 @@
     <h2>Add a job listing which is stored for a month</h2>
 
     <form id="job-form">
-        <label for="job">Select a job</label>
-        <select id="job" required>
-            <option value="">Loading jobs…</option>
-        </select>
+        <label for="job">Search and select a job</label>
+        <input
+            id="job"
+            name="job"
+            type="text"
+            list="job-options"
+            autocomplete="off"
+            required
+            placeholder="Start typing a job title..."
+        >
+        <datalist id="job-options"></datalist>
 
         <label for="country">Country</label>
         <select id="country" required>
@@ -595,6 +602,8 @@
         const listingsContainer = document.getElementById("listings");
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
+        const jobInput = document.getElementById("job");
+        const jobOptions = document.getElementById("job-options");
 
         function compareText(a, b) {
             return a.localeCompare(b, undefined, {
@@ -609,19 +618,12 @@
         }
 
         function loadJobs() {
-            const jobSelect = document.getElementById("job");
-            jobSelect.replaceChildren();
-
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = "Choose a job";
-            jobSelect.appendChild(placeholder);
+            jobOptions.replaceChildren();
 
             [...new Set(JOBS)].sort(compareText).forEach(job => {
                 const option = document.createElement("option");
                 option.value = job;
-                option.textContent = job;
-                jobSelect.appendChild(option);
+                jobOptions.appendChild(option);
             });
         }
 
@@ -841,11 +843,25 @@
 
             if (!form.reportValidity()) return;
 
+            // Require the entered job title to match one of the available options.
+            const selectedJob = JOBS.find(
+                job => job.toLowerCase() === jobInput.value.trim().toLowerCase()
+            );
+
+            if (!selectedJob) {
+                setMessage(
+                    "Please choose a job from the suggestions.",
+                    true
+                );
+                jobInput.focus();
+                return;
+            }
+
             submitButton.disabled = true;
             setMessage("Saving listing…");
 
             const listing = {
-                job: document.getElementById("job").value,
+                job: selectedJob,
                 country: countrySelect.value,
                 region: regionSelect.value,
                 address: document.getElementById("address").value.trim(),
