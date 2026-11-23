@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Available Jobs by Country</title>
+  <title>Available Jobs</title>
 
   <style>
     :root {
@@ -19,14 +19,7 @@
       background: #000;
     }
 
-    h1,
-    h2,
-    h3,
-    p,
-    strong {
-      color: #fff;
-    }
-
+    .search-panel,
     .job-group,
     .country-group,
     .region-group,
@@ -39,7 +32,45 @@
       background: #000;
     }
 
-    .job-group {
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px;
+      margin-top: 5px;
+      border: 1px solid #777;
+      border-radius: 4px;
+      color: #fff;
+      background: #000;
+      font: inherit;
+    }
+
+    select option {
+      color: #fff;
+      background: #000;
+    }
+
+    select:focus {
+      outline: 2px solid #81b5ff;
+      outline-offset: 1px;
+    }
+
+    .hint,
+    .empty,
+    #result-count {
+      color: #fff;
+    }
+
+    .job-group,
+    .country-group,
+    .region-group,
+    .listing {
       background: #000;
     }
 
@@ -47,7 +78,6 @@
     .region-group,
     .listing {
       margin-left: 12px;
-      background: #000;
     }
 
     .listing p {
@@ -55,11 +85,6 @@
       color: #fff;
       overflow-wrap: anywhere;
       white-space: pre-wrap;
-    }
-
-    .empty,
-    #result-count {
-      color: #fff;
     }
 
     @media (max-width: 600px) {
@@ -80,7 +105,27 @@
   <h1>Employee Workspace</h1>
   <h2>Available Jobs</h2>
 
-  <p id="result-count" aria-live="polite">Loading listings…</p>
+  <section class="search-panel" aria-label="Job search filters">
+    <label for="country-search">Country</label>
+    <select id="country-search">
+      <option value="">All countries</option>
+      <option value="America">America</option>
+      <option value="Denmark">Denmark</option>
+      <option value="Germany">Germany</option>
+      <option value="Italy">Italy</option>
+      <option value="Norway">Norway</option>
+      <option value="Singapore">Singapore</option>
+      <option value="UK">UK</option>
+    </select>
+
+    <label for="region-search">Region / State / Province</label>
+    <select id="region-search" disabled>
+      <option value="">Choose a country first</option>
+    </select>
+
+    <p id="result-count" aria-live="polite">Loading listings…</p>
+  </section>
+
   <div id="listings" aria-live="polite">Loading listings…</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -89,17 +134,10 @@
     const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-    const COUNTRIES = [
-      "America",
-      "Denmark",
-      "Germany",
-      "Italy",
-      "Norway",
-      "Singapore",
-      "UK"
-    ];
-
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const countrySelect = document.getElementById("country-search");
+    const regionSelect = document.getElementById("region-search");
     const listingsContainer = document.getElementById("listings");
     const resultCount = document.getElementById("result-count");
 
@@ -114,6 +152,61 @@
 
     function normalize(value) {
       return String(value || "").trim().toLocaleLowerCase();
+    }
+
+    function populateRegions(country) {
+      regionSelect.replaceChildren();
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = country
+        ? "All regions / states / provinces"
+        : "Choose a country first";
+      regionSelect.appendChild(defaultOption);
+
+      if (!country) {
+        regionSelect.disabled = true;
+        return;
+      }
+
+      const regions = [
+        ...new Set(
+          allListings
+            .filter(item => normalize(item.country) === normalize(country))
+            .map(item => item.region)
+            .filter(Boolean)
+        )
+      ].sort(compareText);
+
+      for (const region of regions) {
+        const option = document.createElement("option");
+        option.value = region;
+        option.textContent = region;
+        regionSelect.appendChild(option);
+      }
+
+      regionSelect.disabled = false;
+    }
+
+    function matchesFilters(listing) {
+      const selectedCountry = countrySelect.value;
+      const selectedRegion = regionSelect.value;
+
+      if (
+        selectedCountry &&
+        normalize(listing.country) !== normalize(selectedCountry)
+      ) {
+        return false;
+      }
+
+      if (
+        selectedRegion &&
+        normalize(listing.region) !== normalize(selectedRegion)
+      ) {
+        return false;
+      }
+
+      return true;
     }
 
     function makeGroup(title, className, headingTag = "h3") {
@@ -137,47 +230,50 @@
     }
 
     function renderListings() {
+      const filtered = allListings.filter(matchesFilters);
       listingsContainer.replaceChildren();
 
-      // Show the requested countries even when a country has no listings.
-      const groupedListings = new Map(
-        COUNTRIES.map(country => [country, []])
-      );
+      resultCount.textContent =
+        `${filtered.length} ${filtered.length === 1 ? "listing" : "listings"} found`;
 
-      for (const item of allListings) {
-        const matchingCountry = COUNTRIES.find(
-          country => normalize(country) === normalize(item.country)
-        );
-
-        if (matchingCountry) {
-          groupedListings.get(matchingCountry).push(item);
-        }
+      if (!filtered.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = allListings.length
+          ? "No listings match those filters. Try another country or region."
+          : "No current job listings are available.";
+        listingsContainer.appendChild(empty);
+        return;
       }
 
-      resultCount.textContent =
-        `${allListings.length} ${allListings.length === 1 ? "listing" : "listings"} found`;
+      const jobs = new Map();
 
-      for (const country of COUNTRIES) {
-        const countrySection = makeGroup(country, "country-group", "h2");
-        const countryListings = groupedListings.get(country);
+      for (const item of filtered) {
+        const job = item.job || "Unspecified job";
+        const country = item.country || "Unspecified country";
+        const region = item.region || "Unspecified region";
 
-        if (countryListings.length === 0) {
-          const empty = document.createElement("p");
-          empty.className = "empty";
-          empty.textContent = "No current job listings.";
-          countrySection.appendChild(empty);
-        } else {
-          const jobs = new Map();
+        if (!jobs.has(job)) jobs.set(job, new Map());
 
-          for (const item of countryListings) {
-            const job = item.job || "Unspecified job";
-            if (!jobs.has(job)) jobs.set(job, []);
-            jobs.get(job).push(item);
-          }
+        const countries = jobs.get(job);
+        if (!countries.has(country)) countries.set(country, new Map());
 
-          for (const job of [...jobs.keys()].sort(compareText)) {
-            const jobSection = makeGroup(job, "job-group", "h3");
-            const sortedListings = jobs.get(job).sort(
+        const regions = countries.get(country);
+        if (!regions.has(region)) regions.set(region, []);
+        regions.get(region).push(item);
+      }
+
+      for (const job of [...jobs.keys()].sort(compareText)) {
+        const jobSection = makeGroup(job, "job-group", "h2");
+        const countries = jobs.get(job);
+
+        for (const country of [...countries.keys()].sort(compareText)) {
+          const countrySection = makeGroup(country, "country-group");
+          const regions = countries.get(country);
+
+          for (const region of [...regions.keys()].sort(compareText)) {
+            const regionSection = makeGroup(region, "region-group");
+            const sortedListings = regions.get(region).sort(
               (a, b) => compareText(a.address, b.address)
             );
 
@@ -185,21 +281,22 @@
               const article = document.createElement("article");
               article.className = "listing";
 
-              addDetail(article, "Region / State / Province", item.region);
               addDetail(article, "Address", item.address);
               addDetail(article, "Telephone", item.telephone);
               addDetail(article, "Income / Salary", item.income);
               addDetail(article, "Work hours / schedule", item.work_hours);
               addDetail(article, "Description", item.description);
 
-              jobSection.appendChild(article);
+              regionSection.appendChild(article);
             }
 
-            countrySection.appendChild(jobSection);
+            countrySection.appendChild(regionSection);
           }
+
+          jobSection.appendChild(countrySection);
         }
 
-        listingsContainer.appendChild(countrySection);
+        listingsContainer.appendChild(jobSection);
       }
     }
 
@@ -217,11 +314,19 @@
       renderListings();
     }
 
+    countrySelect.addEventListener("change", () => {
+      populateRegions(countrySelect.value);
+      renderListings();
+    });
+
+    regionSelect.addEventListener("change", renderListings);
+
     async function start() {
       try {
+        resultCount.textContent = "Loading listings…";
         await loadListings();
       } catch (error) {
-        resultCount.textContent = "Could not load the job listings.";
+        resultCount.textContent = "Could not load the job search.";
         listingsContainer.textContent = error.message;
       }
     }
