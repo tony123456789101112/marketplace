@@ -14,7 +14,11 @@
             color: #333;
         }
 
-        form, .job-group, .country-group, .region-group, .listing {
+        form,
+        .job-group,
+        .country-group,
+        .region-group,
+        .listing {
             padding: 20px;
             margin-bottom: 16px;
             border: 1px solid #ddd;
@@ -27,7 +31,9 @@
             font-weight: bold;
         }
 
-        input, select, textarea {
+        input,
+        select,
+        textarea {
             box-sizing: border-box;
             width: 100%;
             padding: 10px;
@@ -54,6 +60,12 @@
         .message {
             color: #216e39;
             min-height: 1.4em;
+        }
+
+        .hint {
+            margin: 6px 0 0;
+            color: #666;
+            font-size: 0.9rem;
         }
 
         .job-group {
@@ -87,12 +99,6 @@
         .empty {
             color: #666;
         }
-
-        .hint {
-            margin: 6px 0 0;
-            color: #666;
-            font-size: 0.9rem;
-        }
     </style>
 </head>
 <body>
@@ -110,7 +116,9 @@
             required
         >
         <datalist id="qualification-options"></datalist>
-        <p class="hint">Type a qualification and select a suggestion.</p>
+        <p class="hint">
+            Type to search, then select a qualification suggestion.
+        </p>
 
         <label for="job">Related job</label>
         <select id="job" required disabled>
@@ -128,25 +136,44 @@
         </select>
 
         <label for="address">Address</label>
-        <input id="address" type="text" required
-               placeholder="Enter the workplace address">
+        <input
+            id="address"
+            type="text"
+            required
+            placeholder="Enter the workplace address"
+        >
 
         <label for="telephone">Contact telephone number</label>
-        <input id="telephone" type="tel" required
-               autocomplete="tel"
-               placeholder="For example: +1 555 123 4567">
+        <input
+            id="telephone"
+            type="tel"
+            required
+            autocomplete="tel"
+            placeholder="For example: +1 555 123 4567"
+        >
 
         <label for="income">Income / Salary</label>
-        <input id="income" type="text" required
-               placeholder="For example: $60,000–$75,000 per year">
+        <input
+            id="income"
+            type="text"
+            required
+            placeholder="For example: $60,000–$75,000 per year"
+        >
 
         <label for="work-hours">Work hours / schedule</label>
-        <input id="work-hours" type="text" required
-               placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM">
+        <input
+            id="work-hours"
+            type="text"
+            required
+            placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM"
+        >
 
         <label for="description">Job description and other details</label>
-        <textarea id="description" required
-                  placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."></textarea>
+        <textarea
+            id="description"
+            required
+            placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."
+        ></textarea>
 
         <button id="submit-button" type="submit">Save job listing</button>
         <p id="message" class="message" role="status" aria-live="polite"></p>
@@ -158,7 +185,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // Supabase settings.
         const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
         const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
 
@@ -619,11 +645,20 @@
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
 
-        // Extracts the qualification text inside the final parentheses.
-        // This is used to build the degree/diploma suggestions and matching jobs.
+        /*
+         * Returns the text inside the final outer parentheses.
+         * Handles nested parentheses, for example:
+         * "Behavior Analyst (BCBA) (Applied Behavior Analysis / Psychology Master's)"
+         */
         function getQualification(job) {
-            const match = job.match(/\(([^()]*)\)\s*$/);
-            return match ? match[1].trim() : "";
+            const finalOpen = job.lastIndexOf("(");
+            const finalClose = job.lastIndexOf(")");
+
+            if (finalOpen === -1 || finalClose === -1 || finalClose < finalOpen) {
+                return "";
+            }
+
+            return job.slice(finalOpen + 1, finalClose).trim();
         }
 
         function compareText(a, b) {
@@ -638,11 +673,19 @@
             message.style.color = isError ? "#b42318" : "#216e39";
         }
 
+        function resetJobSelect(placeholderText) {
+            jobSelect.replaceChildren();
+
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = placeholderText;
+            jobSelect.appendChild(placeholder);
+            jobSelect.disabled = true;
+        }
+
         function loadQualifications() {
             const qualifications = [
-                ...new Set(
-                    JOBS.map(getQualification).filter(Boolean)
-                )
+                ...new Set(JOBS.map(getQualification).filter(Boolean))
             ].sort(compareText);
 
             qualificationOptions.replaceChildren();
@@ -655,13 +698,11 @@
         }
 
         function loadRelatedJobs(qualification) {
-            const normalizedQualification =
-                qualification.trim().toLocaleLowerCase();
+            const selectedQualification = qualification.trim().toLocaleLowerCase();
 
             const matchingJobs = JOBS
                 .filter(job =>
-                    getQualification(job).toLocaleLowerCase() ===
-                    normalizedQualification
+                    getQualification(job).toLocaleLowerCase() === selectedQualification
                 )
                 .sort(compareText);
 
@@ -677,7 +718,12 @@
             matchingJobs.forEach(job => {
                 const option = document.createElement("option");
                 option.value = job;
-                option.textContent = job.split(" (")[0];
+
+                // Show the job title without the qualification in the dropdown.
+                const titleEnd = job.lastIndexOf(" (");
+                option.textContent =
+                    titleEnd > 0 ? job.slice(0, titleEnd) : job;
+
                 jobSelect.appendChild(option);
             });
 
@@ -685,7 +731,7 @@
 
             if (matchingJobs.length === 0) {
                 setMessage(
-                    "No listed jobs match that qualification. Try selecting a suggestion.",
+                    "No listed jobs match that qualification. Try choosing a suggestion.",
                     true
                 );
             } else {
@@ -693,26 +739,25 @@
             }
         }
 
+        /*
+         * Do not clear or rewrite the search input while the user is typing.
+         * The related-job list updates only when the typed text exactly matches
+         * one of the qualification suggestions.
+         */
         qualificationSearch.addEventListener("input", () => {
             const typedQualification = qualificationSearch.value.trim();
 
-            jobSelect.replaceChildren();
-
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = typedQualification
-                ? "Choose a suggested qualification"
-                : "Choose a degree or diploma first";
-            jobSelect.appendChild(placeholder);
-            jobSelect.disabled = true;
+            resetJobSelect(
+                typedQualification
+                    ? "Choose a suggested qualification"
+                    : "Choose a degree or diploma first"
+            );
 
             if (!typedQualification) {
                 setMessage("");
                 return;
             }
 
-            // Only show related jobs after an exact qualification suggestion
-            // has been selected or entered.
             const exactMatch = [...qualificationOptions.options].some(option =>
                 option.value.toLocaleLowerCase() ===
                 typedQualification.toLocaleLowerCase()
@@ -864,14 +909,18 @@
                     const country = listing.country || "Unspecified country";
                     const region = listing.region || "Unspecified region";
 
-                    if (!jobGroups.has(job)) jobGroups.set(job, new Map());
+                    if (!jobGroups.has(job)) {
+                        jobGroups.set(job, new Map());
+                    }
 
                     const countryGroups = jobGroups.get(job);
+
                     if (!countryGroups.has(country)) {
                         countryGroups.set(country, new Map());
                     }
 
                     const regionGroups = countryGroups.get(country);
+
                     if (!regionGroups.has(region)) {
                         regionGroups.set(region, []);
                     }
@@ -955,7 +1004,7 @@
 
             if (jobSelect.disabled || !jobSelect.value) {
                 setMessage(
-                    "Select a suggested degree or diploma and a related job.",
+                    "Select a qualification suggestion and a related job.",
                     true
                 );
                 return;
@@ -984,14 +1033,7 @@
                 if (error) throw error;
 
                 form.reset();
-
-                jobSelect.replaceChildren();
-                const jobPlaceholder = document.createElement("option");
-                jobPlaceholder.value = "";
-                jobPlaceholder.textContent =
-                    "Choose a degree or diploma first";
-                jobSelect.appendChild(jobPlaceholder);
-                jobSelect.disabled = true;
+                resetJobSelect("Choose a degree or diploma first");
 
                 regionSelect.disabled = true;
                 regionSelect.innerHTML =
@@ -1003,7 +1045,10 @@
 
                 await renderListings();
             } catch (error) {
-                setMessage("Could not save listing: " + error.message, true);
+                setMessage(
+                    "Could not save listing: " + error.message,
+                    true
+                );
             } finally {
                 submitButton.disabled = false;
             }
