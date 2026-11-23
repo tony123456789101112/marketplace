@@ -22,7 +22,6 @@
     .search-panel,
     .job-group,
     .country-group,
-    .region-group,
     .listing {
       padding: 18px;
       margin-bottom: 15px;
@@ -84,11 +83,6 @@
       background: #111;
     }
 
-    .region-group {
-      margin-left: 12px;
-      background: #191919;
-    }
-
     .listing {
       margin-left: 12px;
       background: #111;
@@ -107,7 +101,6 @@
       }
 
       .country-group,
-      .region-group,
       .listing {
         margin-left: 0;
       }
@@ -139,11 +132,11 @@
     <label for="country-search">Country</label>
     <select id="country-search">
       <option value="">All countries</option>
-    </select>
-
-    <label for="region-search">Region / State / Province</label>
-    <select id="region-search" disabled>
-      <option value="">Choose a country first</option>
+      <option value="Denmark">Denmark</option>
+      <option value="Germany">Germany</option>
+      <option value="Norway">Norway</option>
+      <option value="Singapore">Singapore</option>
+      <option value="UK">UK</option>
     </select>
 
     <p id="result-count" aria-live="polite">Loading listings…</p>
@@ -168,8 +161,6 @@
       document.getElementById("job-search");
     const countrySelect =
       document.getElementById("country-search");
-    const regionSelect =
-      document.getElementById("region-search");
     const listingsContainer =
       document.getElementById("listings");
     const resultCount =
@@ -223,7 +214,11 @@
         '"use strict"; return (' + match[1] + ');'
       )();
 
-      if (!degreeJobs || typeof degreeJobs !== "object" || Array.isArray(degreeJobs)) {
+      if (
+        !degreeJobs ||
+        typeof degreeJobs !== "object" ||
+        Array.isArray(degreeJobs)
+      ) {
         throw new Error("The DEGREE_JOBS map in employer.html is invalid.");
       }
 
@@ -264,69 +259,10 @@
       jobSelect.disabled = jobs.length === 0;
     }
 
-    function populateCountries() {
-      const countries = [
-        ...new Set(
-          allListings
-            .map(item => item.country)
-            .filter(Boolean)
-        )
-      ].sort(compareText);
-
-      countrySelect.replaceChildren();
-
-      const allOption = document.createElement("option");
-      allOption.value = "";
-      allOption.textContent = "All countries";
-      countrySelect.appendChild(allOption);
-
-      for (const country of countries) {
-        const option = document.createElement("option");
-        option.value = country;
-        option.textContent = country;
-        countrySelect.appendChild(option);
-      }
-    }
-
-    function populateRegions(country) {
-      regionSelect.replaceChildren();
-
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.textContent = country
-        ? "All regions / states / provinces"
-        : "Choose a country first";
-      regionSelect.appendChild(defaultOption);
-
-      if (!country) {
-        regionSelect.disabled = true;
-        return;
-      }
-
-      const regions = [
-        ...new Set(
-          allListings
-            .filter(item => normalize(item.country) === normalize(country))
-            .map(item => item.region)
-            .filter(Boolean)
-        )
-      ].sort(compareText);
-
-      for (const region of regions) {
-        const option = document.createElement("option");
-        option.value = region;
-        option.textContent = region;
-        regionSelect.appendChild(option);
-      }
-
-      regionSelect.disabled = false;
-    }
-
     function matchesFilters(listing) {
       const qualification = getSelectedQualification();
       const selectedJob = jobSelect.value;
       const selectedCountry = countrySelect.value;
-      const selectedRegion = regionSelect.value;
 
       if (qualificationInput.value.trim() && !qualification) {
         return false;
@@ -353,13 +289,6 @@
         return false;
       }
 
-      if (
-        selectedRegion &&
-        normalize(listing.region) !== normalize(selectedRegion)
-      ) {
-        return false;
-      }
-
       return true;
     }
 
@@ -379,7 +308,10 @@
       const strong = document.createElement("strong");
 
       strong.textContent = label + ": ";
-      paragraph.append(strong, document.createTextNode(value || "Not provided"));
+      paragraph.append(
+        strong,
+        document.createTextNode(value || "Not provided")
+      );
       container.appendChild(paragraph);
     }
 
@@ -394,7 +326,7 @@
         const empty = document.createElement("p");
         empty.className = "empty";
         empty.textContent = allListings.length
-          ? "No listings match those filters. Try another qualification, job, country, or region."
+          ? "No listings match those filters. Try another qualification, job, or country."
           : "No current job listings are available.";
         listingsContainer.appendChild(empty);
         return;
@@ -405,16 +337,18 @@
       for (const item of filtered) {
         const job = item.job || "Unspecified job";
         const country = item.country || "Unspecified country";
-        const region = item.region || "Unspecified region";
 
-        if (!jobs.has(job)) jobs.set(job, new Map());
+        if (!jobs.has(job)) {
+          jobs.set(job, new Map());
+        }
 
         const countries = jobs.get(job);
-        if (!countries.has(country)) countries.set(country, new Map());
 
-        const regions = countries.get(country);
-        if (!regions.has(region)) regions.set(region, []);
-        regions.get(region).push(item);
+        if (!countries.has(country)) {
+          countries.set(country, []);
+        }
+
+        countries.get(country).push(item);
       }
 
       for (const job of [...jobs.keys()].sort(compareText)) {
@@ -423,28 +357,21 @@
 
         for (const country of [...countries.keys()].sort(compareText)) {
           const countrySection = makeGroup(country, "country-group");
-          const regions = countries.get(country);
+          const sortedListings = countries.get(country).sort(
+            (a, b) => compareText(a.address, b.address)
+          );
 
-          for (const region of [...regions.keys()].sort(compareText)) {
-            const regionSection = makeGroup(region, "region-group");
-            const sortedListings = regions.get(region).sort(
-              (a, b) => compareText(a.address, b.address)
-            );
+          for (const item of sortedListings) {
+            const article = document.createElement("article");
+            article.className = "listing";
 
-            for (const item of sortedListings) {
-              const article = document.createElement("article");
-              article.className = "listing";
+            addDetail(article, "Address", item.address);
+            addDetail(article, "Telephone", item.telephone);
+            addDetail(article, "Income / Salary", item.income);
+            addDetail(article, "Work hours / schedule", item.work_hours);
+            addDetail(article, "Description", item.description);
 
-              addDetail(article, "Address", item.address);
-              addDetail(article, "Telephone", item.telephone);
-              addDetail(article, "Income / Salary", item.income);
-              addDetail(article, "Work hours / schedule", item.work_hours);
-              addDetail(article, "Description", item.description);
-
-              regionSection.appendChild(article);
-            }
-
-            countrySection.appendChild(regionSection);
+            countrySection.appendChild(article);
           }
 
           jobSection.appendChild(countrySection);
@@ -455,18 +382,22 @@
     }
 
     async function loadListings() {
-      const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+      const cutoff = new Date(
+        Date.now() - THIRTY_DAYS_MS
+      ).toISOString();
 
       const { data, error } = await db
         .from("job_listings")
-        .select("job,country,region,address,telephone,income,work_hours,description,created_at")
+        .select(
+          "job,country,address,telephone,income,work_hours,description,created_at"
+        )
         .gte("created_at", cutoff);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       allListings = data || [];
-      populateCountries();
-      populateRegions(countrySelect.value);
     }
 
     qualificationInput.addEventListener("input", () => {
@@ -486,13 +417,7 @@
     });
 
     jobSelect.addEventListener("change", renderListings);
-
-    countrySelect.addEventListener("change", () => {
-      populateRegions(countrySelect.value);
-      renderListings();
-    });
-
-    regionSelect.addEventListener("change", renderListings);
+    countrySelect.addEventListener("change", renderListings);
 
     async function start() {
       try {
