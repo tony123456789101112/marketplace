@@ -87,6 +87,12 @@
         .empty {
             color: #666;
         }
+
+        .hint {
+            margin: 6px 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -94,17 +100,22 @@
     <h2>Add a job listing which is stored for a month</h2>
 
     <form id="job-form">
-        <label for="job">Search and select a job</label>
+        <label for="qualification-search">Degree or diploma</label>
         <input
-            id="job"
-            name="job"
+            id="qualification-search"
             type="text"
-            list="job-options"
+            list="qualification-options"
             autocomplete="off"
+            placeholder="Type to search degrees or diplomas"
             required
-            placeholder="Start typing a job title..."
         >
-        <datalist id="job-options"></datalist>
+        <datalist id="qualification-options"></datalist>
+        <p class="hint">Type a qualification and select a suggestion.</p>
+
+        <label for="job">Related job</label>
+        <select id="job" required disabled>
+            <option value="">Choose a degree or diploma first</option>
+        </select>
 
         <label for="country">Country</label>
         <select id="country" required>
@@ -596,14 +607,24 @@
             { value: "Norway", label: "Norway" }
         ];
 
+        const qualificationSearch =
+            document.getElementById("qualification-search");
+        const qualificationOptions =
+            document.getElementById("qualification-options");
+        const jobSelect = document.getElementById("job");
         const countrySelect = document.getElementById("country");
         const regionSelect = document.getElementById("region");
         const form = document.getElementById("job-form");
         const listingsContainer = document.getElementById("listings");
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
-        const jobInput = document.getElementById("job");
-        const jobOptions = document.getElementById("job-options");
+
+        // Extracts the qualification text inside the final parentheses.
+        // This is used to build the degree/diploma suggestions and matching jobs.
+        function getQualification(job) {
+            const match = job.match(/\(([^()]*)\)\s*$/);
+            return match ? match[1].trim() : "";
+        }
 
         function compareText(a, b) {
             return a.localeCompare(b, undefined, {
@@ -617,15 +638,92 @@
             message.style.color = isError ? "#b42318" : "#216e39";
         }
 
-        function loadJobs() {
-            jobOptions.replaceChildren();
+        function loadQualifications() {
+            const qualifications = [
+                ...new Set(
+                    JOBS.map(getQualification).filter(Boolean)
+                )
+            ].sort(compareText);
 
-            [...new Set(JOBS)].sort(compareText).forEach(job => {
+            qualificationOptions.replaceChildren();
+
+            qualifications.forEach(qualification => {
                 const option = document.createElement("option");
-                option.value = job;
-                jobOptions.appendChild(option);
+                option.value = qualification;
+                qualificationOptions.appendChild(option);
             });
         }
+
+        function loadRelatedJobs(qualification) {
+            const normalizedQualification =
+                qualification.trim().toLocaleLowerCase();
+
+            const matchingJobs = JOBS
+                .filter(job =>
+                    getQualification(job).toLocaleLowerCase() ===
+                    normalizedQualification
+                )
+                .sort(compareText);
+
+            jobSelect.replaceChildren();
+
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = matchingJobs.length
+                ? "Choose a related job"
+                : "No matching jobs found";
+            jobSelect.appendChild(placeholder);
+
+            matchingJobs.forEach(job => {
+                const option = document.createElement("option");
+                option.value = job;
+                option.textContent = job.split(" (")[0];
+                jobSelect.appendChild(option);
+            });
+
+            jobSelect.disabled = matchingJobs.length === 0;
+
+            if (matchingJobs.length === 0) {
+                setMessage(
+                    "No listed jobs match that qualification. Try selecting a suggestion.",
+                    true
+                );
+            } else {
+                setMessage("");
+            }
+        }
+
+        qualificationSearch.addEventListener("input", () => {
+            const typedQualification = qualificationSearch.value.trim();
+
+            jobSelect.replaceChildren();
+
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = typedQualification
+                ? "Choose a suggested qualification"
+                : "Choose a degree or diploma first";
+            jobSelect.appendChild(placeholder);
+            jobSelect.disabled = true;
+
+            if (!typedQualification) {
+                setMessage("");
+                return;
+            }
+
+            // Only show related jobs after an exact qualification suggestion
+            // has been selected or entered.
+            const exactMatch = [...qualificationOptions.options].some(option =>
+                option.value.toLocaleLowerCase() ===
+                typedQualification.toLocaleLowerCase()
+            );
+
+            if (exactMatch) {
+                loadRelatedJobs(typedQualification);
+            } else {
+                setMessage("");
+            }
+        });
 
         function loadCountries() {
             COUNTRIES
@@ -641,7 +739,8 @@
 
         async function loadRegions(country) {
             regionSelect.disabled = true;
-            regionSelect.innerHTML = '<option value="">Loading regions…</option>';
+            regionSelect.innerHTML =
+                '<option value="">Loading regions…</option>';
             setMessage("");
 
             try {
@@ -677,7 +776,10 @@
                 } else {
                     regionSelect.innerHTML =
                         '<option value="">No regions available</option>';
-                    setMessage("No regions were returned for this country.", true);
+                    setMessage(
+                        "No regions were returned for this country.",
+                        true
+                    );
                 }
             } catch (error) {
                 regionSelect.innerHTML =
@@ -727,7 +829,9 @@
         }
 
         async function fetchActiveListings() {
-            const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+            const cutoff = new Date(
+                Date.now() - THIRTY_DAYS_MS
+            ).toISOString();
 
             const { data, error } = await db
                 .from("job_listings")
@@ -780,19 +884,25 @@
                     const countryGroups = jobGroups.get(job);
 
                     [...countryGroups.keys()].sort(compareText).forEach(country => {
-                        const countrySection = makeGroup(country, "country-group");
+                        const countrySection =
+                            makeGroup(country, "country-group");
                         const regionGroups = countryGroups.get(country);
 
                         [...regionGroups.keys()].sort(compareText).forEach(region => {
-                            const regionSection = makeGroup(region, "region-group");
+                            const regionSection =
+                                makeGroup(region, "region-group");
 
-                            const sortedListings = [...regionGroups.get(region)]
-                                .sort((a, b) =>
-                                    compareText(a.address || "", b.address || "")
+                            const sortedListings =
+                                [...regionGroups.get(region)].sort((a, b) =>
+                                    compareText(
+                                        a.address || "",
+                                        b.address || ""
+                                    )
                                 );
 
                             sortedListings.forEach(listing => {
-                                const listingElement = document.createElement("div");
+                                const listingElement =
+                                    document.createElement("div");
                                 listingElement.className = "listing";
 
                                 addListingDetail(
@@ -843,17 +953,11 @@
 
             if (!form.reportValidity()) return;
 
-            // Require the entered job title to match one of the available options.
-            const selectedJob = JOBS.find(
-                job => job.toLowerCase() === jobInput.value.trim().toLowerCase()
-            );
-
-            if (!selectedJob) {
+            if (jobSelect.disabled || !jobSelect.value) {
                 setMessage(
-                    "Please choose a job from the suggestions.",
+                    "Select a suggested degree or diploma and a related job.",
                     true
                 );
-                jobInput.focus();
                 return;
             }
 
@@ -861,14 +965,15 @@
             setMessage("Saving listing…");
 
             const listing = {
-                job: selectedJob,
+                job: jobSelect.value,
                 country: countrySelect.value,
                 region: regionSelect.value,
                 address: document.getElementById("address").value.trim(),
                 telephone: document.getElementById("telephone").value.trim(),
                 income: document.getElementById("income").value.trim(),
                 work_hours: document.getElementById("work-hours").value.trim(),
-                description: document.getElementById("description").value.trim()
+                description:
+                    document.getElementById("description").value.trim()
             };
 
             try {
@@ -879,6 +984,15 @@
                 if (error) throw error;
 
                 form.reset();
+
+                jobSelect.replaceChildren();
+                const jobPlaceholder = document.createElement("option");
+                jobPlaceholder.value = "";
+                jobPlaceholder.textContent =
+                    "Choose a degree or diploma first";
+                jobSelect.appendChild(jobPlaceholder);
+                jobSelect.disabled = true;
+
                 regionSelect.disabled = true;
                 regionSelect.innerHTML =
                     '<option value="">Choose a country first</option>';
@@ -895,7 +1009,7 @@
             }
         });
 
-        loadJobs();
+        loadQualifications();
         loadCountries();
         renderListings();
     </script>
