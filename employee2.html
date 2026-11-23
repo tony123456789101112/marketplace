@@ -6,13 +6,17 @@
   <title>Search Available Jobs</title>
 
   <style>
+    :root {
+      color-scheme: dark;
+    }
+
     body {
       max-width: 1000px;
       margin: 35px auto;
       padding: 0 20px;
       font-family: Arial, sans-serif;
-      color: #333;
-      background: #fff;
+      color: #fff;
+      background: #000;
     }
 
     .search-panel,
@@ -22,18 +26,17 @@
     .listing {
       padding: 18px;
       margin-bottom: 15px;
-      border: 1px solid #ddd;
+      border: 1px solid #555;
       border-radius: 8px;
-    }
-
-    .search-panel {
-      background: #f7f9fc;
+      color: #fff;
+      background: #111;
     }
 
     label {
       display: block;
       margin-top: 14px;
       font-weight: bold;
+      color: #fff;
     }
 
     input,
@@ -42,43 +45,58 @@
       width: 100%;
       padding: 11px;
       margin-top: 5px;
-      border: 1px solid #aaa;
+      border: 1px solid #777;
       border-radius: 4px;
+      color: #fff;
+      background: #000;
       font: inherit;
+    }
+
+    input::placeholder {
+      color: #ccc;
+      opacity: 1;
+    }
+
+    select option,
+    datalist option {
+      color: #fff;
+      background: #000;
     }
 
     input:focus,
     select:focus {
-      outline: 2px solid #377dcc;
+      outline: 2px solid #81b5ff;
       outline-offset: 1px;
     }
 
     .hint,
     .empty,
     #result-count {
-      color: #666;
+      color: #ddd;
     }
 
     .job-group {
-      background: #f7f9fc;
+      background: #171d25;
     }
 
     .country-group {
       margin-left: 12px;
-      background: #fff;
+      background: #111;
     }
 
     .region-group {
       margin-left: 12px;
-      background: #fafafa;
+      background: #191919;
     }
 
     .listing {
       margin-left: 12px;
+      background: #111;
     }
 
     .listing p {
       margin: 8px 0;
+      color: #fff;
       overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
@@ -111,19 +129,22 @@
       placeholder="Type to search degrees or diplomas"
     >
     <datalist id="qualification-options"></datalist>
-    <p class="hint">Select a qualification suggestion to see its related jobs.</p>
+    <p class="hint">Select a qualification suggestion to see related jobs.</p>
 
     <label for="job-search">Related job</label>
     <select id="job-search" disabled>
       <option value="">Choose a degree or diploma first</option>
     </select>
 
-    <label for="keyword-search">Search job details (optional)</label>
-    <input
-      id="keyword-search"
-      type="search"
-      placeholder="Search description, location, salary, or other details"
-    >
+    <label for="country-search">Country</label>
+    <select id="country-search">
+      <option value="">All countries</option>
+    </select>
+
+    <label for="region-search">Region / State / Province</label>
+    <select id="region-search" disabled>
+      <option value="">Choose a country first</option>
+    </select>
 
     <p id="result-count" aria-live="polite">Loading listings…</p>
   </section>
@@ -145,8 +166,10 @@
       document.getElementById("qualification-options");
     const jobSelect =
       document.getElementById("job-search");
-    const keywordInput =
-      document.getElementById("keyword-search");
+    const countrySelect =
+      document.getElementById("country-search");
+    const regionSelect =
+      document.getElementById("region-search");
     const listingsContainer =
       document.getElementById("listings");
     const resultCount =
@@ -174,10 +197,6 @@
       ) || "";
     }
 
-    /*
-     * Loads the existing DEGREE_JOBS object from employer.html.
-     * This avoids duplicating its entire qualification/job list here.
-     */
     async function loadDegreeJobs() {
       const response = await fetch(EMPLOYER_PAGE_URL, {
         cache: "no-store"
@@ -185,41 +204,35 @@
 
       if (!response.ok) {
         throw new Error(
-          `Could not load ${EMPLOYER_PAGE_URL}. Make sure employee.html and employer.html are in the same folder and served from the same website.`
+          "Could not load employer.html. Make sure both HTML files are in the same folder and served from your website."
         );
       }
 
       const html = await response.text();
-
-      /*
-       * Find the DEGREE_JOBS object in employer.html and evaluate only
-       * that object declaration. The employer page must declare it as:
-       * const DEGREE_JOBS = { ... };
-       */
       const match = html.match(
         /\bconst\s+DEGREE_JOBS\s*=\s*(\{[\s\S]*?\n\s*\});/
       );
 
       if (!match) {
         throw new Error(
-          "Could not find `const DEGREE_JOBS = { ... };` in employer.html."
+          "Could not find the DEGREE_JOBS object in employer.html."
         );
       }
 
-      const parsed = Function(`"use strict"; return (${match[1]});`)();
+      degreeJobs = Function(
+        '"use strict"; return (' + match[1] + ');'
+      )();
 
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("The DEGREE_JOBS map in employer.html is not valid.");
+      if (!degreeJobs || typeof degreeJobs !== "object" || Array.isArray(degreeJobs)) {
+        throw new Error("The DEGREE_JOBS map in employer.html is invalid.");
       }
 
-      degreeJobs = parsed;
       qualificationNames = Object.keys(degreeJobs).sort(compareText);
-
       qualificationOptions.replaceChildren();
 
-      for (const qualification of qualificationNames) {
+      for (const name of qualificationNames) {
         const option = document.createElement("option");
-        option.value = qualification;
+        option.value = name;
         qualificationOptions.appendChild(option);
       }
     }
@@ -251,10 +264,69 @@
       jobSelect.disabled = jobs.length === 0;
     }
 
-    function listingMatchesFilters(listing) {
+    function populateCountries() {
+      const countries = [
+        ...new Set(
+          allListings
+            .map(item => item.country)
+            .filter(Boolean)
+        )
+      ].sort(compareText);
+
+      countrySelect.replaceChildren();
+
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "All countries";
+      countrySelect.appendChild(allOption);
+
+      for (const country of countries) {
+        const option = document.createElement("option");
+        option.value = country;
+        option.textContent = country;
+        countrySelect.appendChild(option);
+      }
+    }
+
+    function populateRegions(country) {
+      regionSelect.replaceChildren();
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = country
+        ? "All regions / states / provinces"
+        : "Choose a country first";
+      regionSelect.appendChild(defaultOption);
+
+      if (!country) {
+        regionSelect.disabled = true;
+        return;
+      }
+
+      const regions = [
+        ...new Set(
+          allListings
+            .filter(item => normalize(item.country) === normalize(country))
+            .map(item => item.region)
+            .filter(Boolean)
+        )
+      ].sort(compareText);
+
+      for (const region of regions) {
+        const option = document.createElement("option");
+        option.value = region;
+        option.textContent = region;
+        regionSelect.appendChild(option);
+      }
+
+      regionSelect.disabled = false;
+    }
+
+    function matchesFilters(listing) {
       const qualification = getSelectedQualification();
       const selectedJob = jobSelect.value;
-      const keyword = normalize(keywordInput.value);
+      const selectedCountry = countrySelect.value;
+      const selectedRegion = regionSelect.value;
 
       if (qualificationInput.value.trim() && !qualification) {
         return false;
@@ -274,21 +346,18 @@
         }
       }
 
-      if (keyword) {
-        const searchableText = [
-          listing.job,
-          listing.country,
-          listing.region,
-          listing.address,
-          listing.telephone,
-          listing.income,
-          listing.work_hours,
-          listing.description
-        ].join(" ").toLocaleLowerCase();
+      if (
+        selectedCountry &&
+        normalize(listing.country) !== normalize(selectedCountry)
+      ) {
+        return false;
+      }
 
-        if (!searchableText.includes(keyword)) {
-          return false;
-        }
+      if (
+        selectedRegion &&
+        normalize(listing.region) !== normalize(selectedRegion)
+      ) {
+        return false;
       }
 
       return true;
@@ -315,7 +384,7 @@
     }
 
     function renderListings() {
-      const filtered = allListings.filter(listingMatchesFilters);
+      const filtered = allListings.filter(matchesFilters);
       listingsContainer.replaceChildren();
 
       resultCount.textContent =
@@ -325,7 +394,7 @@
         const empty = document.createElement("p");
         empty.className = "empty";
         empty.textContent = allListings.length
-          ? "No listings match your search. Try another qualification, job, or keyword."
+          ? "No listings match those filters. Try another qualification, job, country, or region."
           : "No current job listings are available.";
         listingsContainer.appendChild(empty);
         return;
@@ -396,6 +465,8 @@
       if (error) throw error;
 
       allListings = data || [];
+      populateCountries();
+      populateRegions(countrySelect.value);
     }
 
     qualificationInput.addEventListener("input", () => {
@@ -415,7 +486,13 @@
     });
 
     jobSelect.addEventListener("change", renderListings);
-    keywordInput.addEventListener("input", renderListings);
+
+    countrySelect.addEventListener("change", () => {
+      populateRegions(countrySelect.value);
+      renderListings();
+    });
+
+    regionSelect.addEventListener("change", renderListings);
 
     async function start() {
       try {
