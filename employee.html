@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Available Jobs</title>
+  <title>Search Available Jobs</title>
 
   <style>
     :root {
@@ -29,7 +29,7 @@
       border: 1px solid #555;
       border-radius: 8px;
       color: #fff;
-      background: #000;
+      background: #111;
     }
 
     label {
@@ -39,6 +39,7 @@
       color: #fff;
     }
 
+    input,
     select {
       box-sizing: border-box;
       width: 100%;
@@ -51,11 +52,18 @@
       font: inherit;
     }
 
-    select option {
+    input::placeholder {
+      color: #ccc;
+      opacity: 1;
+    }
+
+    select option,
+    datalist option {
       color: #fff;
       background: #000;
     }
 
+    input:focus,
     select:focus {
       outline: 2px solid #81b5ff;
       outline-offset: 1px;
@@ -64,20 +72,26 @@
     .hint,
     .empty,
     #result-count {
-      color: #fff;
+      color: #ddd;
     }
 
-    .job-group,
-    .country-group,
-    .region-group,
-    .listing {
-      background: #000;
+    .job-group {
+      background: #171d25;
     }
 
-    .country-group,
-    .region-group,
+    .country-group {
+      margin-left: 12px;
+      background: #111;
+    }
+
+    .region-group {
+      margin-left: 12px;
+      background: #191919;
+    }
+
     .listing {
       margin-left: 12px;
+      background: #111;
     }
 
     .listing p {
@@ -103,19 +117,28 @@
 
 <body>
   <h1>Employee Workspace</h1>
-  <h2>Available Jobs</h2>
+  <h2>Search available jobs</h2>
 
   <section class="search-panel" aria-label="Job search filters">
+    <label for="qualification-search">Degree or diploma</label>
+    <input
+      id="qualification-search"
+      type="text"
+      list="qualification-options"
+      autocomplete="off"
+      placeholder="Type to search degrees or diplomas"
+    >
+    <datalist id="qualification-options"></datalist>
+    <p class="hint">Select a qualification suggestion to see related jobs.</p>
+
+    <label for="job-search">Related job</label>
+    <select id="job-search" disabled>
+      <option value="">Choose a degree or diploma first</option>
+    </select>
+
     <label for="country-search">Country</label>
     <select id="country-search">
       <option value="">All countries</option>
-      <option value="America">America</option>
-      <option value="Denmark">Denmark</option>
-      <option value="Germany">Germany</option>
-      <option value="Italy">Italy</option>
-      <option value="Norway">Norway</option>
-      <option value="Singapore">Singapore</option>
-      <option value="UK">UK</option>
     </select>
 
     <label for="region-search">Region / State / Province</label>
@@ -132,15 +155,28 @@
   <script>
     const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
     const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
+    const EMPLOYER_PAGE_URL = "employer.html";
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const countrySelect = document.getElementById("country-search");
-    const regionSelect = document.getElementById("region-search");
-    const listingsContainer = document.getElementById("listings");
-    const resultCount = document.getElementById("result-count");
+    const qualificationInput =
+      document.getElementById("qualification-search");
+    const qualificationOptions =
+      document.getElementById("qualification-options");
+    const jobSelect =
+      document.getElementById("job-search");
+    const countrySelect =
+      document.getElementById("country-search");
+    const regionSelect =
+      document.getElementById("region-search");
+    const listingsContainer =
+      document.getElementById("listings");
+    const resultCount =
+      document.getElementById("result-count");
 
+    let degreeJobs = {};
+    let qualificationNames = [];
     let allListings = [];
 
     function compareText(a, b) {
@@ -152,6 +188,104 @@
 
     function normalize(value) {
       return String(value || "").trim().toLocaleLowerCase();
+    }
+
+    function getSelectedQualification() {
+      const typed = normalize(qualificationInput.value);
+      return qualificationNames.find(
+        name => normalize(name) === typed
+      ) || "";
+    }
+
+    async function loadDegreeJobs() {
+      const response = await fetch(EMPLOYER_PAGE_URL, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          "Could not load employer.html. Make sure both HTML files are in the same folder and served from your website."
+        );
+      }
+
+      const html = await response.text();
+      const match = html.match(
+        /\bconst\s+DEGREE_JOBS\s*=\s*(\{[\s\S]*?\n\s*\});/
+      );
+
+      if (!match) {
+        throw new Error(
+          "Could not find the DEGREE_JOBS object in employer.html."
+        );
+      }
+
+      degreeJobs = Function(
+        '"use strict"; return (' + match[1] + ');'
+      )();
+
+      if (!degreeJobs || typeof degreeJobs !== "object" || Array.isArray(degreeJobs)) {
+        throw new Error("The DEGREE_JOBS map in employer.html is invalid.");
+      }
+
+      qualificationNames = Object.keys(degreeJobs).sort(compareText);
+      qualificationOptions.replaceChildren();
+
+      for (const name of qualificationNames) {
+        const option = document.createElement("option");
+        option.value = name;
+        qualificationOptions.appendChild(option);
+      }
+    }
+
+    function resetJobSelect(placeholder) {
+      jobSelect.replaceChildren();
+
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = placeholder;
+      jobSelect.appendChild(option);
+      jobSelect.disabled = true;
+    }
+
+    function populateRelatedJobs(qualification) {
+      const jobs = degreeJobs[qualification] || [];
+
+      resetJobSelect(
+        jobs.length ? "All related jobs" : "No related jobs found"
+      );
+
+      for (const title of [...new Set(jobs)].sort(compareText)) {
+        const option = document.createElement("option");
+        option.value = title;
+        option.textContent = title;
+        jobSelect.appendChild(option);
+      }
+
+      jobSelect.disabled = jobs.length === 0;
+    }
+
+    function populateCountries() {
+      const countries = [
+        ...new Set(
+          allListings
+            .map(item => item.country)
+            .filter(Boolean)
+        )
+      ].sort(compareText);
+
+      countrySelect.replaceChildren();
+
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "All countries";
+      countrySelect.appendChild(allOption);
+
+      for (const country of countries) {
+        const option = document.createElement("option");
+        option.value = country;
+        option.textContent = country;
+        countrySelect.appendChild(option);
+      }
     }
 
     function populateRegions(country) {
@@ -189,8 +323,28 @@
     }
 
     function matchesFilters(listing) {
+      const qualification = getSelectedQualification();
+      const selectedJob = jobSelect.value;
       const selectedCountry = countrySelect.value;
       const selectedRegion = regionSelect.value;
+
+      if (qualificationInput.value.trim() && !qualification) {
+        return false;
+      }
+
+      if (qualification) {
+        const relatedJobs = degreeJobs[qualification] || [];
+
+        if (selectedJob) {
+          if (normalize(listing.job) !== normalize(selectedJob)) {
+            return false;
+          }
+        } else if (!relatedJobs.some(
+          title => normalize(title) === normalize(listing.job)
+        )) {
+          return false;
+        }
+      }
 
       if (
         selectedCountry &&
@@ -240,7 +394,7 @@
         const empty = document.createElement("p");
         empty.className = "empty";
         empty.textContent = allListings.length
-          ? "No listings match those filters. Try another country or region."
+          ? "No listings match those filters. Try another qualification, job, country, or region."
           : "No current job listings are available.";
         listingsContainer.appendChild(empty);
         return;
@@ -311,8 +465,27 @@
       if (error) throw error;
 
       allListings = data || [];
-      renderListings();
+      populateCountries();
+      populateRegions(countrySelect.value);
     }
+
+    qualificationInput.addEventListener("input", () => {
+      const qualification = getSelectedQualification();
+
+      if (qualification) {
+        populateRelatedJobs(qualification);
+      } else {
+        resetJobSelect(
+          qualificationInput.value.trim()
+            ? "Select a qualification suggestion first"
+            : "Choose a degree or diploma first"
+        );
+      }
+
+      renderListings();
+    });
+
+    jobSelect.addEventListener("change", renderListings);
 
     countrySelect.addEventListener("change", () => {
       populateRegions(countrySelect.value);
@@ -323,8 +496,15 @@
 
     async function start() {
       try {
-        resultCount.textContent = "Loading listings…";
-        await loadListings();
+        resultCount.textContent = "Loading qualifications and listings…";
+
+        await Promise.all([
+          loadDegreeJobs(),
+          loadListings()
+        ]);
+
+        resetJobSelect("Choose a degree or diploma first");
+        renderListings();
       } catch (error) {
         resultCount.textContent = "Could not load the job search.";
         listingsContainer.textContent = error.message;
