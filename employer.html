@@ -7,7 +7,7 @@
 
     <style>
         :root {
-            color-scheme: light;
+            color-scheme: dark;
         }
 
         body {
@@ -15,8 +15,8 @@
             max-width: 900px;
             margin: 40px auto;
             padding: 0 20px;
-            color: #333;
-            background-color: #fff;
+            color: #fff;
+            background: #111;
         }
 
         form,
@@ -26,14 +26,16 @@
         .listing {
             padding: 20px;
             margin-bottom: 16px;
-            border: 1px solid #ddd;
+            border: 1px solid #555;
             border-radius: 8px;
+            background: #1b1b1b;
         }
 
         label {
             display: block;
             margin-top: 14px;
             font-weight: bold;
+            color: #fff;
         }
 
         input,
@@ -44,46 +46,38 @@
             padding: 10px;
             margin-top: 5px;
             font: inherit;
-            color: #222;
-            background-color: #fff;
-            border: 1px solid #888;
+            color: #fff !important;
+            background-color: #000 !important;
+            border: 1px solid #777;
             border-radius: 4px;
+            caret-color: #fff;
         }
 
-        /*
-         * Explicit search-field colors help prevent white text on a white
-         * background while typing, including when the field receives focus.
-         */
-        #qualification-search,
-        #qualification-search:focus,
-        #qualification-search:active {
-            color: #111 !important;
-            background-color: #fff !important;
-            -webkit-text-fill-color: #111 !important;
-            caret-color: #111 !important;
-            opacity: 1 !important;
+        /* Keep typed text and placeholder readable in the search field. */
+        #qualification-search {
+            color: #fff !important;
+            background: #000 !important;
+            -webkit-text-fill-color: #fff !important;
         }
 
-        #qualification-search::placeholder {
-            color: #666 !important;
-            -webkit-text-fill-color: #666 !important;
+        input::placeholder,
+        textarea::placeholder {
+            color: #bbb;
             opacity: 1;
         }
 
-        #qualification-search:focus {
-            outline: 3px solid #2563eb;
-            outline-offset: 2px;
-            border-color: #2563eb;
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 2px solid #8ab4f8;
+            outline-offset: 1px;
         }
 
-        /* Keep readable colors if the browser applies autofill styling. */
-        #qualification-search:-webkit-autofill,
-        #qualification-search:-webkit-autofill:hover,
-        #qualification-search:-webkit-autofill:focus,
-        #qualification-search:-webkit-autofill:active {
-            -webkit-text-fill-color: #111 !important;
-            box-shadow: 0 0 0 1000px #fff inset !important;
-            caret-color: #111 !important;
+        /* Dark options menu where supported by the browser. */
+        select option,
+        datalist option {
+            color: #fff;
+            background-color: #000;
         }
 
         textarea {
@@ -94,7 +88,15 @@
         button {
             margin-top: 18px;
             padding: 10px 16px;
+            color: #fff;
+            background: #333;
+            border: 1px solid #777;
+            border-radius: 4px;
             cursor: pointer;
+        }
+
+        button:hover {
+            background: #444;
         }
 
         button:disabled {
@@ -103,28 +105,32 @@
         }
 
         .message {
-            color: #216e39;
+            color: #8fe0a3;
             min-height: 1.4em;
+        }
+
+        .hint,
+        .empty {
+            color: #ccc;
         }
 
         .hint {
             margin: 6px 0 0;
-            color: #666;
             font-size: 0.9rem;
         }
 
         .job-group {
-            background: #f7f9fc;
+            background: #202630;
         }
 
         .country-group {
             margin-left: 12px;
-            background: #fff;
+            background: #191919;
         }
 
         .region-group {
             margin-left: 12px;
-            background: #fafafa;
+            background: #222;
         }
 
         .listing {
@@ -140,10 +146,6 @@
             overflow-wrap: anywhere;
             white-space: pre-wrap;
         }
-
-        .empty {
-            color: #666;
-        }
     </style>
 </head>
 <body>
@@ -154,19 +156,14 @@
         <label for="qualification-search">Degree or diploma</label>
         <input
             id="qualification-search"
-            name="qualification"
             type="text"
             list="qualification-options"
             autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
             placeholder="Type to search degrees or diplomas"
             required
         >
         <datalist id="qualification-options"></datalist>
-        <p class="hint">
-            Type to search, then select a qualification suggestion.
-        </p>
+        <p class="hint">Type to search, then select a qualification suggestion.</p>
 
         <label for="job">Related job</label>
         <select id="job" required disabled>
@@ -184,44 +181,24 @@
         </select>
 
         <label for="address">Address</label>
-        <input
-            id="address"
-            type="text"
-            required
-            placeholder="Enter the workplace address"
-        >
+        <input id="address" type="text" required
+               placeholder="Enter the workplace address">
 
         <label for="telephone">Contact telephone number</label>
-        <input
-            id="telephone"
-            type="tel"
-            required
-            autocomplete="tel"
-            placeholder="For example: +1 555 123 4567"
-        >
+        <input id="telephone" type="tel" required autocomplete="tel"
+               placeholder="For example: +1 555 123 4567">
 
         <label for="income">Income / Salary</label>
-        <input
-            id="income"
-            type="text"
-            required
-            placeholder="For example: $60,000–$75,000 per year"
-        >
+        <input id="income" type="text" required
+               placeholder="For example: $60,000–$75,000 per year">
 
         <label for="work-hours">Work hours / schedule</label>
-        <input
-            id="work-hours"
-            type="text"
-            required
-            placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM"
-        >
+        <input id="work-hours" type="text" required
+               placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM">
 
         <label for="description">Job description and other details</label>
-        <textarea
-            id="description"
-            required
-            placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."
-        ></textarea>
+        <textarea id="description" required
+                  placeholder="Describe the role, responsibilities, requirements, benefits, and any other details."></textarea>
 
         <button id="submit-button" type="submit">Save job listing</button>
         <p id="message" class="message" role="status" aria-live="polite"></p>
@@ -231,7 +208,6 @@
     <div id="listings"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <script>
         const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
         const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
@@ -697,10 +673,7 @@
             const open = job.lastIndexOf("(");
             const close = job.lastIndexOf(")");
 
-            if (open === -1 || close === -1 || close < open) {
-                return "";
-            }
-
+            if (open === -1 || close < open) return "";
             return job.slice(open + 1, close).trim();
         }
 
@@ -713,15 +686,15 @@
 
         function setMessage(text, isError = false) {
             message.textContent = text;
-            message.style.color = isError ? "#b42318" : "#216e39";
+            message.style.color = isError ? "#ff8f8f" : "#8fe0a3";
         }
 
-        function resetJobSelect(placeholderText) {
+        function resetJobSelect(text) {
             jobSelect.replaceChildren();
 
             const placeholder = document.createElement("option");
             placeholder.value = "";
-            placeholder.textContent = placeholderText;
+            placeholder.textContent = text;
             jobSelect.appendChild(placeholder);
             jobSelect.disabled = true;
         }
@@ -770,35 +743,37 @@
             });
 
             jobSelect.disabled = matchingJobs.length === 0;
-            setMessage(
-                matchingJobs.length
-                    ? ""
-                    : "No listed jobs match that qualification. Try a suggestion.",
-                matchingJobs.length === 0
-            );
+
+            if (!matchingJobs.length) {
+                setMessage(
+                    "No listed jobs match that qualification. Try choosing a suggestion.",
+                    true
+                );
+            } else {
+                setMessage("");
+            }
         }
 
         qualificationSearch.addEventListener("input", () => {
-            const typedQualification = qualificationSearch.value.trim();
+            const typed = qualificationSearch.value.trim();
 
             resetJobSelect(
-                typedQualification
+                typed
                     ? "Choose a suggested qualification"
                     : "Choose a degree or diploma first"
             );
 
-            if (!typedQualification) {
+            if (!typed) {
                 setMessage("");
                 return;
             }
 
             const exactMatch = [...qualificationOptions.options].some(option =>
-                option.value.toLocaleLowerCase() ===
-                typedQualification.toLocaleLowerCase()
+                option.value.toLocaleLowerCase() === typed.toLocaleLowerCase()
             );
 
             if (exactMatch) {
-                loadRelatedJobs(typedQualification);
+                loadRelatedJobs(typed);
             } else {
                 setMessage("");
             }
@@ -850,7 +825,7 @@
                     regionSelect.appendChild(option);
                 });
 
-                if (regions.length > 0) {
+                if (regions.length) {
                     regionSelect.disabled = false;
                 } else {
                     regionSelect.innerHTML =
@@ -903,14 +878,12 @@
             paragraph.appendChild(
                 document.createTextNode(value || "Not provided")
             );
-
             container.appendChild(paragraph);
         }
 
         async function fetchActiveListings() {
-            const cutoff = new Date(
-                Date.now() - THIRTY_DAYS_MS
-            ).toISOString();
+            const cutoff =
+                new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
 
             const { data, error } = await db
                 .from("job_listings")
@@ -928,7 +901,7 @@
             try {
                 const listings = await fetchActiveListings();
 
-                if (listings.length === 0) {
+                if (!listings.length) {
                     const empty = document.createElement("p");
                     empty.className = "empty";
                     empty.textContent = "No current job listings saved.";
@@ -943,18 +916,14 @@
                     const country = listing.country || "Unspecified country";
                     const region = listing.region || "Unspecified region";
 
-                    if (!jobGroups.has(job)) {
-                        jobGroups.set(job, new Map());
-                    }
+                    if (!jobGroups.has(job)) jobGroups.set(job, new Map());
 
                     const countryGroups = jobGroups.get(job);
-
                     if (!countryGroups.has(country)) {
                         countryGroups.set(country, new Map());
                     }
 
                     const regionGroups = countryGroups.get(country);
-
                     if (!regionGroups.has(region)) {
                         regionGroups.set(region, []);
                     }
@@ -977,10 +946,7 @@
 
                             const sortedListings =
                                 [...regionGroups.get(region)].sort((a, b) =>
-                                    compareText(
-                                        a.address || "",
-                                        b.address || ""
-                                    )
+                                    compareText(a.address || "", b.address || "")
                                 );
 
                             sortedListings.forEach(listing => {
