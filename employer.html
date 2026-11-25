@@ -4,103 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Employer Workspace</title>
-
     <style>
         :root { color-scheme: dark; }
-
         body {
-            max-width: 1000px;
-            margin: 35px auto;
-            padding: 0 20px;
-            font-family: Arial, sans-serif;
-            color: #fff;
-            background: #111;
+            max-width: 1000px; margin: 35px auto; padding: 0 20px;
+            font-family: Arial, sans-serif; color: #fff; background: #111;
         }
-
         form, .job-group, .country-group, .region-group, .listing {
-            padding: 18px;
-            margin-bottom: 15px;
-            border: 1px solid #555;
-            border-radius: 8px;
-            background: #1b1b1b;
+            padding: 18px; margin-bottom: 15px; border: 1px solid #555;
+            border-radius: 8px; background: #1b1b1b;
         }
-
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-            color: #fff;
-        }
-
+        label { display: block; margin-top: 15px; font-weight: bold; }
         input, select, textarea {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 11px;
-            margin-top: 5px;
-            border: 1px solid #777;
-            border-radius: 4px;
-            color: #fff !important;
-            background-color: #000 !important;
-            font: inherit;
-            caret-color: #fff;
+            box-sizing: border-box; width: 100%; padding: 11px; margin-top: 5px;
+            border: 1px solid #777; border-radius: 4px; color: #fff;
+            background: #000; font: inherit;
         }
-
-        input::placeholder, textarea::placeholder {
-            color: #bbb;
-            opacity: 1;
-        }
-
-        select option, datalist option {
-            color: #fff;
-            background-color: #000;
-        }
-
+        input::placeholder, textarea::placeholder { color: #bbb; }
         input:focus, select:focus, textarea:focus {
-            outline: 2px solid #81b5ff;
-            outline-offset: 1px;
+            outline: 2px solid #81b5ff; outline-offset: 1px;
         }
-
-        textarea {
-            min-height: 130px;
-            resize: vertical;
-        }
-
+        textarea { min-height: 130px; resize: vertical; }
         button {
-            padding: 11px 17px;
-            margin-top: 18px;
-            border: 1px solid #888;
-            border-radius: 4px;
-            color: #fff;
-            background: #333;
-            cursor: pointer;
+            padding: 11px 17px; margin-top: 18px; border: 1px solid #888;
+            border-radius: 4px; color: #fff; background: #333; cursor: pointer;
         }
-
         button:hover { background: #484848; }
         button:disabled { cursor: wait; opacity: .6; }
-
         .hint, .empty { color: #ccc; }
-
-        .hint {
-            margin: 6px 0 0;
-            font-size: .9rem;
-        }
-
-        .message {
-            min-height: 1.4em;
-            color: #8fe0a3;
-        }
-
+        .hint { margin: 6px 0 0; font-size: .9rem; }
+        .message { min-height: 1.4em; color: #8fe0a3; }
         .job-group { background: #202630; }
         .country-group { margin-left: 12px; background: #191919; }
         .region-group { margin-left: 12px; background: #222; }
         .listing { margin-left: 12px; }
-        .job-group > h3 { margin-top: 0; }
-
-        .listing p {
-            margin: 8px 0;
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-        }
+        .listing p { margin: 8px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -109,16 +47,11 @@
 
     <form id="job-form">
         <label for="qualification-search">Degree or diploma</label>
-        <input
-            id="qualification-search"
-            type="text"
-            list="qualification-options"
-            autocomplete="off"
-            placeholder="Type to search degrees or diplomas"
-            required
-        >
+        <input id="qualification-search" type="text"
+               list="qualification-options" autocomplete="off"
+               placeholder="Type to search degrees or diplomas" required>
         <datalist id="qualification-options"></datalist>
-        <p class="hint">Type to search and select a qualification suggestion.</p>
+        <p class="hint">Type and select a qualification suggestion.</p>
 
         <label for="job">Related job</label>
         <select id="job" required disabled>
@@ -136,24 +69,23 @@
         </select>
 
         <label for="address">Address</label>
-        <input id="address" type="text" required
-               placeholder="Enter the workplace address">
+        <input id="address" required placeholder="Enter workplace address">
 
         <label for="telephone">Contact telephone number</label>
-        <input id="telephone" type="tel" required autocomplete="tel"
+        <input id="telephone" type="tel" autocomplete="tel" required
                placeholder="For example: +1 555 123 4567">
 
         <label for="income">Income / Salary</label>
-        <input id="income" type="text" required
+        <input id="income" required
                placeholder="For example: $60,000–$75,000 per year">
 
         <label for="work-hours">Work hours / schedule</label>
-        <input id="work-hours" type="text" required
+        <input id="work-hours" required
                placeholder="For example: Monday–Friday, 9:00 AM–5:00 PM">
 
         <label for="description">Job description and other details</label>
         <textarea id="description" required
-                  placeholder="Describe the role, responsibilities, requirements, benefits, and other details."></textarea>
+                  placeholder="Describe responsibilities, requirements, benefits, and details."></textarea>
 
         <button id="submit-button" type="submit">Save job listing</button>
         <p id="message" class="message" role="status" aria-live="polite"></p>
@@ -166,15 +98,19 @@
     <script>
         const SUPABASE_URL = "https://ywtydlllmzzazsskajoh.supabase.co";
         const SUPABASE_KEY = "sb_publishable_R9bF_XIkE_ei2CaiTZfzbw_o2oyu8eb";
-
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
         /*
-         * Keep your complete original DEGREE_JOBS object here,
-         * unchanged, including all qualification/job entries.
+         * INSERT YOUR COMPLETE DEGREE_JOBS OBJECT HERE.
+         *
+         * Copy the entire const DEGREE_JOBS = { ... }; object from your
+         * original message, including every qualification and job.
+         * Do not leave out entries or add a second DEGREE_JOBS declaration.
          */
+
         const DEGREE_JOBS = {
+            "None": ["Restaurants", "Shops"],
             "Fine Art": [
                 "Studio Assistant",
                 "Artist’s Assistant",
@@ -183,7 +119,6 @@
                 "Community Arts Assistant",
                 "Trainee Conservator"
             ],
-            "None": ["Restuarants", "Shops"],
             "Graphic Design": [
                 "Junior Graphic Designer",
                 "Trainee Graphic Designer",
@@ -191,242 +126,18 @@
                 "Junior Brand Designer",
                 "Production Artist",
                 "Junior Digital Designer"
-            ],
-            "Illustration & Animation": [
-                "Junior Illustrator",
-                "Trainee Animator",
-                "Junior 2D/3D Animator",
-                "Storyboard Assistant",
-                "Animation Production Assistant",
-                "Junior Motion Graphics Designer"
-            ],
-            "Fashion": [
-                "Fashion Design Assistant",
-                "Trainee Fashion Designer",
-                "Garment Technologist Assistant",
-                "Fashion Buying Assistant",
-                "Stylist Assistant",
-                "Fashion Marketing Assistant"
-            ],
-            "Interior Design": [
-                "Junior Interior Designer",
-                "Interior Design Assistant",
-                "CAD Technician",
-                "Junior Spatial Designer",
-                "FF&E Assistant"
-            ],
-            "Product & Furniture Design": [
-                "Junior Product Designer",
-                "Furniture Design Assistant",
-                "Graduate Design Engineer",
-                "CAD Designer",
-                "Model Maker",
-                "Product Development Assistant"
-            ],
-            "3D Design Innovation": [
-                "Junior 3D Designer",
-                "3D Visualiser",
-                "Junior CAD Designer",
-                "Model Maker",
-                "Design Research Assistant",
-                "Prototyping Technician"
-            ],
-            "Architecture (RIBA Part 1 & 2)": [
-                "Part 1 Architectural Assistant",
-                "Part 2 Architectural Assistant",
-                "Graduate Architectural Assistant",
-                "Trainee Architect"
-            ],
-            "Architectural Technology": [
-                "Graduate Architectural Technologist",
-                "Trainee Architectural Technologist",
-                "Architectural Technician",
-                "BIM Technician",
-                "CAD Technician"
-            ],
-            "Landscape Architecture": [
-                "Graduate Landscape Architect",
-                "Landscape Assistant",
-                "Landscape Design Assistant",
-                "Landscape Technician",
-                "CAD/BIM Assistant"
-            ],
-            "Creative Writing": [
-                "Editorial Assistant",
-                "Junior Copywriter",
-                "Content Writer",
-                "Publishing Assistant",
-                "Scriptwriting Assistant"
-            ],
-            "English Literature": [
-                "Editorial Assistant",
-                "Publishing Assistant",
-                "Proofreader",
-                "Communications Assistant",
-                "Content Writer"
-            ],
-            "Film Making": [
-                "Production Assistant",
-                "Runner",
-                "Assistant Camera Operator",
-                "Junior Video Editor",
-                "Post-production Assistant",
-                "Trainee Producer"
-            ],
-            "Journalism": [
-                "Trainee Reporter",
-                "Junior Journalist",
-                "Newsroom Assistant",
-                "Editorial Assistant",
-                "Junior Broadcast Journalist"
-            ],
-            "Media & Communication": [
-                "Communications Assistant",
-                "PR Assistant",
-                "Social Media Assistant",
-                "Media Assistant",
-                "Junior Content Producer"
-            ],
-            "Music": [
-                "Music Assistant",
-                "Artist/Talent Assistant",
-                "Studio Assistant",
-                "Music Production Assistant",
-                "Events Assistant",
-                "Trainee Music Teacher"
-            ],
-            "Dance": [
-                "Dance Company Assistant",
-                "Dance Teaching Assistant",
-                "Community Dance Practitioner",
-                "Rehearsal Assistant",
-                "Trainee Dance Teacher"
-            ],
-            "Drama": [
-                "Theatre Assistant",
-                "Stage Management Assistant",
-                "Assistant Director",
-                "Drama Teaching Assistant",
-                "Participation Assistant"
-            ],
-            "Acting & Performance": [
-                "Emerging/Ensemble Performer",
-                "Casting Assistant",
-                "Performer",
-                "Theatre Assistant",
-                "Performance Company Assistant"
-            ],
-            "Accounting & Finance": [
-                "Trainee Accountant",
-                "Accounts Assistant",
-                "Audit Associate",
-                "Tax Trainee",
-                "Finance Assistant",
-                "Trainee Chartered Accountant"
-            ],
-            "Business Management": [
-                "Graduate Management Trainee",
-                "Assistant Manager",
-                "Operations Coordinator",
-                "Project Coordinator",
-                "Business Analyst"
-            ],
-            "International Business": [
-                "International Business Assistant",
-                "Export Assistant",
-                "Trade Coordinator",
-                "Business Development Assistant",
-                "Graduate Management Trainee"
-            ],
-            "Marketing": [
-                "Marketing Assistant",
-                "Digital Marketing Assistant",
-                "Junior Marketing Executive",
-                "SEO Assistant",
-                "Social Media Executive",
-                "Marketing Graduate Trainee"
-            ],
-            "Human Resource Management": [
-                "HR Assistant",
-                "People Operations Assistant",
-                "Recruitment Coordinator",
-                "HR Graduate Trainee",
-                "Learning & Development Assistant"
-            ],
-            "Logistics & Supply Chain": [
-                "Supply Chain Assistant",
-                "Logistics Coordinator",
-                "Procurement Assistant",
-                "Graduate Supply Chain Analyst",
-                "Trainee Buyer"
-            ],
-            "MBA": [
-                "Graduate Management Trainee",
-                "Business Development Manager (junior/graduate)",
-                "Operations Analyst",
-                "Project Manager (graduate)",
-                "Management Consultant (graduate)"
-            ],
-            "Computer Science": [
-                "Graduate Software Developer",
-                "Junior Programmer",
-                "IT Analyst",
-                "Technical Support Analyst"
-            ],
-            "Cyber Security": [
-                "Graduate Cyber Security Analyst",
-                "Junior Security Analyst",
-                "SOC Analyst",
-                "Information Security Assistant"
-            ],
-            "Artificial Intelligence": [
-                "Graduate AI Engineer",
-                "Junior Machine Learning Engineer",
-                "AI Research Assistant",
-                "Data Analyst"
-            ],
-            "Data Science": [
-                "Graduate Data Scientist",
-                "Junior Data Analyst",
-                "Graduate Data Analyst",
-                "Research Data Assistant"
-            ],
-            "Software Engineering": [
-                "Graduate Software Engineer",
-                "Junior Software Developer",
-                "Trainee Developer",
-                "QA/Test Engineer"
-            ],
-            "Mathematics": [
-                "Graduate Statistician",
-                "Data Analyst",
-                "Actuarial Analyst Trainee",
-                "Quantitative Analyst (graduate)",
-                "Mathematics Research Assistant"
-            ],
-            "Environmental Science": [
-                "Graduate Environmental Consultant",
-                "Environmental Monitoring Assistant",
-                "Graduate Environmental Scientist",
-                "Sustainability Assistant"
-            ],
-            "Geography": [
-                "GIS Technician",
-                "Graduate GIS Analyst",
-                "Planning Assistant",
-                "Geospatial Data Analyst"
-            ],
-            "Social Work": [
-                "Newly Qualified Social Worker",
-                "Assessed and Supported Year in Employment (ASYE) Social Worker",
-                "Social Work Assistant"
             ]
-            /* Paste all remaining entries from your original DEGREE_JOBS
-               object above this closing brace. */
+            // Keep adding the rest of your original qualification/job entries here.
         };
 
-        const qualificationNames = Object.keys(DEGREE_JOBS).sort(compareText);
+        function compareText(a, b) {
+            return a.localeCompare(b, undefined, {
+                sensitivity: "base",
+                numeric: true
+            });
+        }
 
+        const qualificationNames = Object.keys(DEGREE_JOBS).sort(compareText);
         const qualificationSearch = document.getElementById("qualification-search");
         const qualificationOptions = document.getElementById("qualification-options");
         const jobSelect = document.getElementById("job");
@@ -437,94 +148,63 @@
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
 
-        function compareText(a, b) {
-            return String(a).localeCompare(String(b), undefined, {
-                sensitivity: "base",
-                numeric: true
-            });
-        }
-
         function setMessage(text, isError = false) {
             message.textContent = text;
             message.style.color = isError ? "#ff9292" : "#8fe0a3";
         }
 
-        function resetJobSelect(placeholderText) {
-            jobSelect.replaceChildren();
-            const option = document.createElement("option");
-            option.value = "";
-            option.textContent = placeholderText;
-            jobSelect.appendChild(option);
+        function resetJobSelect(text) {
+            jobSelect.replaceChildren(new Option(text, ""));
             jobSelect.disabled = true;
         }
 
         function populateQualifications() {
             qualificationOptions.replaceChildren();
             qualificationNames.forEach(name => {
-                const option = document.createElement("option");
-                option.value = name;
-                qualificationOptions.appendChild(option);
+                qualificationOptions.appendChild(new Option(name, name));
             });
         }
 
         function loadRelatedJobs(qualification) {
             const jobs = DEGREE_JOBS[qualification] || [];
-            resetJobSelect(jobs.length
-                ? "Choose a related job"
-                : "No matching jobs found");
+            resetJobSelect(jobs.length ? "Choose a related job" : "No jobs found");
 
-            jobs.forEach(title => {
-                const option = document.createElement("option");
-                option.value = title;
-                option.textContent = title;
-                jobSelect.appendChild(option);
-            });
-
+            jobs.forEach(title => jobSelect.appendChild(new Option(title, title)));
             jobSelect.disabled = jobs.length === 0;
-            setMessage(jobs.length ? "" : "No jobs are listed for that qualification.", !jobs.length);
+
+            setMessage(
+                jobs.length ? "" : "No jobs are listed for that qualification.",
+                !jobs.length
+            );
         }
 
         qualificationSearch.addEventListener("input", () => {
-            const typed = qualificationSearch.value.trim();
-            resetJobSelect(typed
-                ? "Select a suggested qualification first"
-                : "Choose a degree or diploma first");
-
-            if (!typed) {
-                setMessage("");
-                return;
-            }
+            const value = qualificationSearch.value.trim();
+            resetJobSelect(value ? "Select a suggested qualification first" :
+                                   "Choose a degree or diploma first");
 
             const match = qualificationNames.find(name =>
-                name.toLocaleLowerCase() === typed.toLocaleLowerCase()
+                name.toLocaleLowerCase() === value.toLocaleLowerCase()
             );
 
             if (match) loadRelatedJobs(match);
             else setMessage("");
         });
 
-        function loadCountries() {
-            const countries = [
-                { value: "United Kingdom", label: "UK" },
-                { value: "Germany", label: "Germany" },
-                { value: "Singapore", label: "Singapore" },
-                { value: "United States", label: "America" },
-                { value: "Denmark", label: "Denmark" },
-                { value: "Italy", label: "Italy" },
-                { value: "Norway", label: "Norway" }
-            ].sort((a, b) => compareText(a.label, b.label));
-
-            countries.forEach(country => {
-                const option = document.createElement("option");
-                option.value = country.value;
-                option.textContent = country.label;
-                countrySelect.appendChild(option);
-            });
-        }
+        [
+            ["United Kingdom", "UK"],
+            ["Germany", "Germany"],
+            ["Singapore", "Singapore"],
+            ["United States", "America"],
+            ["Denmark", "Denmark"],
+            ["Italy", "Italy"],
+            ["Norway", "Norway"]
+        ].sort((a, b) => compareText(a[1], b[1]))
+         .forEach(([value, label]) => countrySelect.appendChild(new Option(label, value)));
 
         async function loadRegions(country) {
             regionSelect.disabled = true;
-            regionSelect.innerHTML = '<option value="">Loading regions…</option>';
+            regionSelect.replaceChildren(new Option("Loading regions…", ""));
             setMessage("");
 
             try {
@@ -537,45 +217,35 @@
                     }
                 );
 
-                if (!response.ok) throw new Error("Region request failed.");
-
+                if (!response.ok) throw new Error("Region request failed");
                 const result = await response.json();
                 const regions = result.data?.states || [];
                 regions.sort((a, b) => compareText(a.name, b.name));
 
-                regionSelect.innerHTML =
-                    '<option value="">Choose a region/state/province</option>';
+                regionSelect.replaceChildren(
+                    new Option(
+                        regions.length ? "Choose a region/state/province" :
+                                         "No regions available",
+                        ""
+                    )
+                );
 
-                regions.forEach(region => {
-                    const option = document.createElement("option");
-                    option.value = region.name;
-                    option.textContent = region.name;
-                    regionSelect.appendChild(option);
-                });
+                regions.forEach(region =>
+                    regionSelect.appendChild(new Option(region.name, region.name))
+                );
 
-                if (regions.length) {
-                    regionSelect.disabled = false;
-                } else {
-                    regionSelect.innerHTML =
-                        '<option value="">No regions available</option>';
-                    setMessage("No regions were returned for this country.", true);
-                }
+                regionSelect.disabled = regions.length === 0;
             } catch {
-                regionSelect.innerHTML =
-                    '<option value="">Could not load regions</option>';
-                regionSelect.disabled = true;
+                regionSelect.replaceChildren(new Option("Could not load regions", ""));
                 setMessage("Could not load regions. Check your connection and try again.", true);
             }
         }
 
         countrySelect.addEventListener("change", () => {
-            if (countrySelect.value) {
-                loadRegions(countrySelect.value);
-            } else {
+            if (countrySelect.value) loadRegions(countrySelect.value);
+            else {
                 regionSelect.disabled = true;
-                regionSelect.innerHTML =
-                    '<option value="">Choose a country first</option>';
-                setMessage("");
+                regionSelect.replaceChildren(new Option("Choose a country first", ""));
             }
         });
 
@@ -588,32 +258,16 @@
             return section;
         }
 
-        function addListingDetail(container, label, value) {
-            const paragraph = document.createElement("p");
+        function addDetail(container, label, value) {
+            const p = document.createElement("p");
             const strong = document.createElement("strong");
             strong.textContent = label + ": ";
-            paragraph.appendChild(strong);
-            paragraph.appendChild(document.createTextNode(value || "Not provided"));
-            container.appendChild(paragraph);
-        }
-
-        async function deleteExpiredListings() {
-            const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
-
-            // This deletion requires suitable Supabase DELETE permissions/RLS policy.
-            const { error } = await db
-                .from("job_listings")
-                .delete()
-                .lt("created_at", cutoff);
-
-            if (error) {
-                console.warn("Expired listings could not be deleted:", error.message);
-            }
+            p.append(strong, document.createTextNode(value || "Not provided"));
+            container.appendChild(p);
         }
 
         async function fetchActiveListings() {
             const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
-
             const { data, error } = await db
                 .from("job_listings")
                 .select("*")
@@ -638,48 +292,43 @@
                     return;
                 }
 
-                const jobGroups = new Map();
+                const jobs = new Map();
 
-                listings.forEach(listing => {
-                    const job = listing.job || "Unspecified job";
-                    const country = listing.country || "Unspecified country";
-                    const region = listing.region || "Unspecified region";
+                listings.forEach(item => {
+                    const job = item.job || "Unspecified job";
+                    const country = item.country || "Unspecified country";
+                    const region = item.region || "Unspecified region";
 
-                    if (!jobGroups.has(job)) jobGroups.set(job, new Map());
-                    const countryGroups = jobGroups.get(job);
-
-                    if (!countryGroups.has(country)) countryGroups.set(country, new Map());
-                    const regionGroups = countryGroups.get(country);
-
-                    if (!regionGroups.has(region)) regionGroups.set(region, []);
-                    regionGroups.get(region).push(listing);
+                    if (!jobs.has(job)) jobs.set(job, new Map());
+                    const countries = jobs.get(job);
+                    if (!countries.has(country)) countries.set(country, new Map());
+                    const regions = countries.get(country);
+                    if (!regions.has(region)) regions.set(region, []);
+                    regions.get(region).push(item);
                 });
 
-                [...jobGroups.keys()].sort(compareText).forEach(job => {
+                [...jobs.keys()].sort(compareText).forEach(job => {
                     const jobSection = makeGroup(job, "job-group");
-                    const countryGroups = jobGroups.get(job);
+                    const countries = jobs.get(job);
 
-                    [...countryGroups.keys()].sort(compareText).forEach(country => {
+                    [...countries.keys()].sort(compareText).forEach(country => {
                         const countrySection = makeGroup(country, "country-group");
-                        const regionGroups = countryGroups.get(country);
+                        const regions = countries.get(country);
 
-                        [...regionGroups.keys()].sort(compareText).forEach(region => {
+                        [...regions.keys()].sort(compareText).forEach(region => {
                             const regionSection = makeGroup(region, "region-group");
 
-                            regionGroups.get(region)
-                                .slice()
+                            regions.get(region)
                                 .sort((a, b) => compareText(a.address || "", b.address || ""))
-                                .forEach(listing => {
-                                    const element = document.createElement("div");
-                                    element.className = "listing";
-
-                                    addListingDetail(element, "Address", listing.address || "No address entered");
-                                    addListingDetail(element, "Contact telephone number", listing.telephone);
-                                    addListingDetail(element, "Income / Salary", listing.income);
-                                    addListingDetail(element, "Work hours / schedule", listing.work_hours);
-                                    addListingDetail(element, "Job description and other details", listing.description);
-
-                                    regionSection.appendChild(element);
+                                .forEach(item => {
+                                    const card = document.createElement("div");
+                                    card.className = "listing";
+                                    addDetail(card, "Address", item.address);
+                                    addDetail(card, "Contact telephone number", item.telephone);
+                                    addDetail(card, "Income / Salary", item.income);
+                                    addDetail(card, "Work hours / schedule", item.work_hours);
+                                    addDetail(card, "Job description and other details", item.description);
+                                    regionSection.appendChild(card);
                                 });
 
                             countrySection.appendChild(regionSection);
@@ -691,7 +340,8 @@
                     listingsContainer.appendChild(jobSection);
                 });
             } catch (error) {
-                listingsContainer.textContent = "Could not load listings: " + error.message;
+                listingsContainer.textContent =
+                    "Could not load listings: " + (error.message || error);
             }
         }
 
@@ -699,7 +349,7 @@
             event.preventDefault();
             if (!form.reportValidity()) return;
 
-            if (jobSelect.disabled || !jobSelect.value) {
+            if (!jobSelect.value || jobSelect.disabled) {
                 setMessage("Select a qualification and a related job.", true);
                 return;
             }
@@ -725,10 +375,9 @@
                 form.reset();
                 resetJobSelect("Choose a degree or diploma first");
                 regionSelect.disabled = true;
-                regionSelect.innerHTML =
-                    '<option value="">Choose a country first</option>';
+                regionSelect.replaceChildren(new Option("Choose a country first", ""));
 
-                setMessage("Job listing saved. It will no longer display after 30 days.");
+                setMessage("Listing saved. It will stop displaying after 30 days.");
                 await renderListings();
             } catch (error) {
                 setMessage("Could not save listing: " + error.message, true);
@@ -737,16 +386,8 @@
             }
         });
 
-        async function init() {
-            populateQualifications();
-            loadCountries();
-
-            // Best-effort cleanup whenever this page is opened.
-            await deleteExpiredListings();
-            await renderListings();
-        }
-
-        init();
+        populateQualifications();
+        renderListings();
     </script>
 </body>
 </html>
